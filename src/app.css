@@ -1,0 +1,106 @@
+/* Neko Dompet Design System Tokens */
+:root {
+  /* Core Palette */
+  --bg: #F8F0E0;
+  --card: #FFFDF7;
+  --ink: #4A3B32;
+  --mute: #8C7B6E;
+  --line: #EADFCB;
+  --accent: #E59A6A;
+  --accent-pressed: #C97C4E;
+  --sky: #BFE0E6;
+  --grass: #B5D6A0;
+
+  /* Status */
+  --good: #8DBF7A;
+  --warn: #E9B65A;
+  --bad: #D9776B;
+  --bad-pressed: #BA5B50;
+
+  /* Category Pastel Fills & Darker Borders */
+  --cat-jajan-fill: #FBE0D3;
+  --cat-jajan-border: #F2B28C;
+
+  --cat-pulsa-fill: #DCEEF7;
+  --cat-pulsa-border: #9CC5D9;
+
+  --cat-bensin-fill: #E4F2DA;
+  --cat-bensin-border: #9FC88A;
+
+  --cat-jajanin-fill: #EBE0F5;
+  --cat-jajanin-border: #C9B0E0;
+
+  --cat-nabung-fill: #FBE1E7;
+  --cat-nabung-border: #F2B8C6;
+
+  --cat-masuk-fill: #FBF0CF;
+  --cat-masuk-border: #F4D58D;
+
+  /* Sticker Metrics */
+  --radius-card: 22px;
+  --radius-btn: 16px;
+  --radius-chip: 999px;
+  --radius-sheet: 28px;
+  --border-card-bottom: 5px;
+  --border-btn-bottom: 4px;
+  --touch-min: 44px;
+
+  /* Typography */
+  --font-family: 'Zen Maru Gothic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Allow text selection inside inputs and readable content */
+input, textarea, [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Tabular Numbers */
+.tabular-nums,
+[data-tabular-nums] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Button & Interactive Touch Defaults */
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
