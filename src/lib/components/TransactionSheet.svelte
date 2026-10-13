@@ -100,6 +100,39 @@
     return matchingCats[0]?.id || '';
   }
 
+  // Unreached goals for Tabung chips (PRD 18.5)
+  const unreachedGoals = $derived.by(() => {
+    return (goals || []).filter((g) => {
+      if (mode === 'edit' && initialTx?.goal_id === g.id) return true;
+      const target = Math.round(Number(g.target)) || 0;
+      if (target <= 0) return true;
+      const terkumpul = (transactions || [])
+        .filter((t) => t.tipe === 'tabung' && t.goal_id === g.id && t.id !== initialTx?.id)
+        .reduce((sum, t) => sum + (Math.round(Number(t.nominal)) || 0), 0);
+      return terkumpul < target;
+    });
+  });
+
+  function getDefaultGoalId() {
+    if (initialTx?.goal_id) return initialTx.goal_id;
+    // Check last used tabung transaction
+    const lastTabungTx = (transactions || []).find((t) => t.tipe === 'tabung' && t.goal_id);
+    if (lastTabungTx?.goal_id && unreachedGoals.some((g) => g.id === lastTabungTx.goal_id)) {
+      return lastTabungTx.goal_id;
+    }
+    // Check localStorage fallback
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('last_goal_id');
+        if (stored && unreachedGoals.some((g) => g.id === stored)) {
+          return stored;
+        }
+      } catch (e) {}
+    }
+    // Default to first unreached goal
+    return unreachedGoals[0]?.id || '';
+  }
+
   // Calculate non-blocking budget warnings
   const budgetWarning = $derived.by(() => {
     if (tipe !== 'keluar' || numericNominal <= 0 || !selectedCategory) return null;
@@ -158,8 +191,7 @@
           kategoriId = getLastUsedCategoryId(tipe);
         }
 
-        const lastTabungTx = (transactions || []).find((t) => t.tipe === 'tabung');
-        goalId = initialTx?.goal_id || lastTabungTx?.goal_id || '';
+        goalId = getDefaultGoalId();
 
         rawNominal = '';
         catatan = '';
@@ -199,6 +231,9 @@
   function handleTypeChange(newType) {
     tipe = newType;
     kategoriId = getLastUsedCategoryId(newType);
+    if (newType === 'tabung' && !goalId) {
+      goalId = getDefaultGoalId();
+    }
   }
 
   function handleNominalInput(event) {
@@ -277,6 +312,19 @@
       }
     }
 
+    // Remember last used goal for tabung
+    if (typeof localStorage !== 'undefined' && tipe === 'tabung') {
+      try {
+        if (goalId) {
+          localStorage.setItem('last_goal_id', goalId);
+        } else {
+          localStorage.removeItem('last_goal_id');
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const txData = {
       ...(initialTx?.id ? { id: initialTx.id } : {}),
       tipe,
@@ -284,7 +332,7 @@
       nominal: numericNominal,
       catatan: catatan.slice(0, 60).trim(),
       tanggal: targetTanggal,
-      ...(tipe === 'tabung' && goalId ? { goal_id: goalId } : {})
+      ...(tipe === 'tabung' ? { goal_id: goalId || '' } : {})
     };
 
     onsave?.(txData);
@@ -394,27 +442,32 @@
     </div>
 
     <!-- Goal Target Selection for Tabung (PRD 12.3 & 18.5) -->
-    {#if tipe === 'tabung' && (goals || []).length > 0}
+    {#if tipe === 'tabung'}
       <div class="goal-selection-box">
         <span class="goal-section-label">Untuk target:</span>
-        <div class="goal-chips-scroll">
-          <button
-            type="button"
-            class="goal-chip {!goalId ? 'selected' : ''}"
-            onclick={() => (goalId = '')}
-          >
-            Tabungan umum
-          </button>
-          {#each goals as g}
+        <div class="goal-chips-scroll" role="radiogroup" aria-label="Untuk target">
+          {#each unreachedGoals as g}
             <button
               type="button"
               class="goal-chip {goalId === g.id ? 'selected' : ''}"
               onclick={() => (goalId = g.id)}
+              role="radio"
+              aria-checked={goalId === g.id}
             >
               <span>{g.ikon || '🎯'}</span>
               <span>{g.nama}</span>
             </button>
           {/each}
+          <button
+            type="button"
+            class="goal-chip {!goalId ? 'selected' : ''}"
+            onclick={() => (goalId = '')}
+            role="radio"
+            aria-checked={!goalId}
+          >
+            <span>🏷️</span>
+            <span>Umum</span>
+          </button>
         </div>
       </div>
     {/if}
