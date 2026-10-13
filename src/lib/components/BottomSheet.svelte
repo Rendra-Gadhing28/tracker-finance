@@ -3,6 +3,7 @@
    * @typedef {Object} Props
    * @property {boolean} [open]
    * @property {string} [title]
+   * @property {() => boolean} [beforeClose]
    * @property {() => void} [onclose]
    * @property {string} [class]
    * @property {import('svelte').Snippet} [children]
@@ -10,12 +11,16 @@
   let {
     open = $bindable(false),
     title = '',
+    beforeClose = undefined,
     onclose = undefined,
     class: className = '',
     children
   } = $props();
 
   function close() {
+    if (beforeClose && !beforeClose()) {
+      return;
+    }
     open = false;
     onclose?.();
   }

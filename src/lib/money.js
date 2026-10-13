@@ -1,6 +1,6 @@
 /**
  * Format integer to Indonesian Rupiah string.
- * e.g. 72500 -> "Rp 72.500", -3500 -> "-Rp 3.500", 0 -> "Rp 0"
+ * e.g. 72500 -> "Rp 72.500", -3500 -> "−Rp 3.500", 0 -> "Rp 0"
  * @param {number|string} amount
  * @returns {string}
  */
@@ -8,7 +8,7 @@ export function formatRp(amount) {
   const num = Math.round(Number(amount)) || 0;
   const isNegative = num < 0;
   const absStr = Math.abs(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return isNegative ? `-Rp ${absStr}` : `Rp ${absStr}`;
+  return isNegative ? `−Rp ${absStr}` : `Rp ${absStr}`;
 }
 
 /**

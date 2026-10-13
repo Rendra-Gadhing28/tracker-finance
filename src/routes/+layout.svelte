@@ -1,12 +1,23 @@
 <script>
   import '../app.css';
-  import { onMount } from 'svelte';
+  import { setContext, onMount } from 'svelte';
   import { page } from '$app/state';
-  import { sync, initData } from '$lib/stores';
   import SyncBadge from '$lib/components/SyncBadge.svelte';
-  import BottomSheet from '$lib/components/BottomSheet.svelte';
-  import Chip from '$lib/components/Chip.svelte';
-  import Button from '$lib/components/Button.svelte';
+  import TransactionSheet from '$lib/components/TransactionSheet.svelte';
+  import Snackbar from '$lib/components/Snackbar.svelte';
+  import {
+    initData,
+    budgets,
+    transactions,
+    goals,
+    settings,
+    budgetSummary,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction
+  } from '$lib/stores/data.js';
+  import { sync } from '$lib/stores/sync.js';
+  import { formatRp } from '$lib/money.js';
 
   /**
    * @typedef {Object} Props
@@ -14,19 +25,105 @@
    */
   let { children } = $props();
 
-  let isTambahOpen = $state(false);
-  let selectedTipe = $state('keluar');
+  // Transaction Sheet state
+  let isTxSheetOpen = $state(false);
+  let txSheetMode = $state('create'); // 'create' | 'edit'
+  let activeTx = $state(null);
+  let lastUsedNominal = $state(0);
+  let highlightedTxId = $state(null);
+  let activeWeekDate = $state(null);
+
+  // Snackbar state
+  let isSnackbarOpen = $state(false);
+  let snackbarMessage = $state('');
+  let snackbarUndoFn = $state(null);
 
   onMount(() => {
-    const handle = initData();
+    let cleanUp = null;
+    initData().then((res) => {
+      cleanUp = res;
+    });
+
     return () => {
-      handle?.then((h) => h?.destroy?.());
+      cleanUp?.destroy?.();
     };
   });
 
-  const syncLabel = $derived(
-    $sync.pendingCount > 0 ? `${$sync.pendingCount} antrean` : undefined
-  );
+  function openCreate(preset = null) {
+    txSheetMode = 'create';
+    if (preset) {
+      activeTx = preset;
+    } else if (activeWeekDate) {
+      activeTx = { tanggal: activeWeekDate };
+    } else {
+      activeTx = null;
+    }
+    isTxSheetOpen = true;
+  }
+
+  function openEdit(tx) {
+    txSheetMode = 'edit';
+    activeTx = tx;
+    isTxSheetOpen = true;
+  }
+
+  function showToast(message, onUndo) {
+    snackbarMessage = message;
+    snackbarUndoFn = onUndo || null;
+    isSnackbarOpen = true;
+  }
+
+  // Provide to child pages via Svelte context
+  setContext('txManager', {
+    openCreate,
+    openEdit,
+    showToast,
+    setActiveWeekDate: (d) => {
+      activeWeekDate = d;
+    },
+    getHighlightedTxId: () => highlightedTxId
+  });
+
+  // Calculate category spent map for warning pills
+  const categorySpentMap = $derived.by(() => {
+    const map = {};
+    for (const tx of $transactions || []) {
+      if (tx.tipe === 'keluar' && tx.kategori_id) {
+        map[tx.kategori_id] = (map[tx.kategori_id] || 0) + (Number(tx.nominal) || 0);
+      }
+    }
+    return map;
+  });
+
+  async function handleSaveTransaction(txData) {
+    if (txSheetMode === 'edit') {
+      const originalTx = { ...activeTx };
+      await updateTransaction(txData);
+      showToast(`Diperbarui ${formatRp(txData.nominal)}`, async () => {
+        await updateTransaction(originalTx);
+      });
+    } else {
+      const created = await addTransaction(txData);
+      lastUsedNominal = created.nominal;
+      highlightedTxId = created.id;
+      setTimeout(() => {
+        if (highlightedTxId === created.id) {
+          highlightedTxId = null;
+        }
+      }, 1200); // 1.2s flash per PRD 12.4
+      showToast(`Dicatat ${formatRp(created.nominal)}`, async () => {
+        await deleteTransaction(created.id);
+      });
+    }
+  }
+
+  async function handleDeleteTransaction(txId) {
+    const deletedTx = { ...activeTx };
+    await deleteTransaction(txId);
+    showToast(`Dihapus`, async () => {
+      await addTransaction(deletedTx);
+    });
+  }
 
   const navItems = [
     { href: '/', label: 'Beranda', icon: '🏠' },
@@ -41,6 +138,18 @@
     if (href === '/') return page.url.pathname === '/';
     return page.url.pathname.startsWith(href);
   }
+
+  const syncStatus = $derived.by(() => {
+    if ($sync.status === 'offline') return 'offline';
+    if ($sync.pendingCount > 0) return 'saving';
+    return 'ok';
+  });
+
+  const syncLabel = $derived.by(() => {
+    if ($sync.status === 'offline') return 'Offline';
+    if ($sync.pendingCount > 0) return `${$sync.pendingCount} menunggu terkirim`;
+    return 'Tersinkron';
+  });
 </script>
 
 <div class="app-viewport">
@@ -48,7 +157,7 @@
     <!-- Top Header -->
     <header class="app-header">
       <div class="header-left">
-        <SyncBadge status={$sync.status} label={syncLabel} />
+        <SyncBadge status={syncStatus} label={syncLabel} />
       </div>
       <div class="header-right">
         <h1 class="header-title">
@@ -72,7 +181,7 @@
               <button
                 type="button"
                 class="nav-btn-tambah"
-                onclick={() => (isTambahOpen = true)}
+                onclick={() => openCreate(null)}
                 aria-label="Tambah Transaksi"
               >
                 <span class="tambah-icon" aria-hidden="true">＋</span>
@@ -93,54 +202,28 @@
       </div>
     </nav>
 
-    <!-- BottomSheet for Tambah Transaksi -->
-    <BottomSheet bind:open={isTambahOpen} title="Catat Transaksi">
-      <div class="tambah-sheet-body">
-        <div class="type-selector">
-          <Chip
-            selected={selectedTipe === 'keluar'}
-            icon="💸"
-            label="Keluar"
-            onclick={() => (selectedTipe = 'keluar')}
-          />
-          <Chip
-            selected={selectedTipe === 'masuk'}
-            icon="💰"
-            label="Masuk"
-            onclick={() => (selectedTipe = 'masuk')}
-          />
-          <Chip
-            selected={selectedTipe === 'tabung'}
-            icon="🐷"
-            label="Tabung"
-            onclick={() => (selectedTipe = 'tabung')}
-          />
-        </div>
+    <!-- Global Transaction Bottom Sheet -->
+    <TransactionSheet
+      bind:open={isTxSheetOpen}
+      mode={txSheetMode}
+      initialTx={activeTx}
+      categories={$budgets}
+      transactions={$transactions}
+      goals={$goals}
+      totalBudgetA={$budgetSummary.A}
+      totalSpentP={$budgetSummary.P}
+      {categorySpentMap}
+      lastNominal={lastUsedNominal}
+      onsave={handleSaveTransaction}
+      ondelete={handleDeleteTransaction}
+    />
 
-        <div class="sheet-form-placeholder">
-          <p class="sheet-hint">
-            Pencatatan cepat dengan kartu kategori dan nominal instan.
-          </p>
-        </div>
-
-        <div class="sheet-actions">
-          <Button
-            variant="secondary"
-            full
-            onclick={() => (isTambahOpen = false)}
-          >
-            Batal
-          </Button>
-          <Button
-            variant="primary"
-            full
-            onclick={() => (isTambahOpen = false)}
-          >
-            Lanjut
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
+    <!-- Global Floating Snackbar -->
+    <Snackbar
+      bind:open={isSnackbarOpen}
+      message={snackbarMessage}
+      onaction={() => snackbarUndoFn?.()}
+    />
   </div>
 </div>
 
@@ -150,7 +233,7 @@
     justify-content: center;
     align-items: stretch;
     min-height: 100dvh;
-    background-color: #ECE2D0; /* subtle framing background on wide monitors */
+    background-color: #ECE2D0;
   }
 
   .mobile-shell {
@@ -315,38 +398,5 @@
     color: var(--mute);
     margin-top: 36px;
     line-height: 1;
-  }
-
-  /* Sheet body inside Tambah */
-  .tambah-sheet-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .type-selector {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .sheet-form-placeholder {
-    padding: 16px;
-    background-color: var(--bg);
-    border-radius: var(--radius-card, 22px);
-    border: 1.5px solid var(--line);
-    text-align: center;
-  }
-
-  .sheet-hint {
-    font-size: 14px;
-    color: var(--mute);
-    margin: 0;
-  }
-
-  .sheet-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
   }
 </style>

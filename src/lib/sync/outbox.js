@@ -42,9 +42,31 @@ export async function enqueueAction(action, payload) {
   // 1. Write locally immediately (optimistic UI)
   await applyActionToLocalDb(action, payload);
 
+  const db = await getDb();
+
+  // If action is delTx, check if an unsent saveTx exists in outbox
+  // Per PRD 12.4: "Urungkan menghapus transaksi (bila belum terkirim, cukup dibuang dari antrean)"
+  if (action === 'delTx' && db) {
+    const txId = typeof payload === 'object' && payload !== null ? payload.id : payload;
+    const allOutbox = await db.getAll('outbox');
+    const pendingSave = allOutbox.find(
+      (item) => item.action === 'saveTx' && item.payload?.id === txId
+    );
+    if (pendingSave) {
+      await db.delete('outbox', pendingSave.id);
+      const pendingCount = await db.count('outbox');
+      const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+      sync.update((s) => ({
+        ...s,
+        pendingCount,
+        status: !isOnline ? 'offline' : pendingCount > 0 ? 'pending' : 'synced'
+      }));
+      return { ok: true };
+    }
+  }
+
   // 2. Check if remote API is configured
   const { url } = await getApiConfig();
-  const db = await getDb();
 
   if (url && db) {
     await db.add('outbox', {

@@ -218,7 +218,7 @@
             full
             onclick={handleSaveAndStart}
           >
-            Simpan & Mulai
+            Mulai
           </Button>
         {/if}
       </div>

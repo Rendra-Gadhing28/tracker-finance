@@ -53,6 +53,8 @@ export const transactions = writable([]);
 export const budgets = writable([]);
 export const goals = writable([]);
 export const settings = writable({ ...DEFAULT_SETTINGS });
+export const isDataLoaded = writable(false);
+export const skippedRowsCount = writable(0);
 
 /**
  * Derived store: active week range { start: Date, end: Date } based on settings.awal_minggu.
@@ -160,9 +162,24 @@ export async function reloadFromDb() {
   ]);
 
   if (Array.isArray(txList)) {
-    // Sort transactions by date descending
-    txList.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
-    transactions.set(txList);
+    // Validate rows per PRD 11.7: skip invalid nominal or unparseable date
+    let skipped = 0;
+    const validList = [];
+    for (const tx of txList) {
+      const nominal = Number(tx.nominal);
+      const isValidNominal = !isNaN(nominal) && nominal > 0;
+      const isValidDate = tx.tanggal && !isNaN(new Date(tx.tanggal).getTime());
+      if (isValidNominal && isValidDate && tx.id) {
+        validList.push(tx);
+      } else {
+        skipped++;
+      }
+    }
+    skippedRowsCount.set(skipped);
+
+    // Sort valid transactions by date descending
+    validList.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+    transactions.set(validList);
   }
 
   if (Array.isArray(budgetList)) {
@@ -184,6 +201,8 @@ export async function reloadFromDb() {
     }
     settings.set(sObj);
   }
+
+  isDataLoaded.set(true);
 }
 
 let isInitialized = false;

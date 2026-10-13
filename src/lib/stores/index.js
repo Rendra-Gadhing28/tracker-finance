@@ -7,6 +7,8 @@ export {
   budgets,
   goals,
   settings,
+  isDataLoaded,
+  skippedRowsCount,
   currentWeekRange,
   transactionsThisWeek,
   budgetSummary,
