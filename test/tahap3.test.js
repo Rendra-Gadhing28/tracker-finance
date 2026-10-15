@@ -10,7 +10,9 @@ import {
   calculateLargestRemainder,
   calculateCategoryBreakdown,
   calculateDailySpending,
-  generateInsights
+  generateInsights,
+  calculateDonutAngles,
+  calculateStats
 } from '../src/lib/stats.js';
 
 console.log('--- RUNNING TAHAP 3 VERIFICATION TESTS ---');
@@ -411,6 +413,170 @@ console.log('--- RUNNING TAHAP 3 VERIFICATION TESTS ---');
   assert.equal(insights3[0], 'Hemat Rp 20.000 dari rencana', 'Prioritas 4: Hemat dari rencana');
 
   console.log('✓ generateInsights priority rules & 2-line capping verified');
+}
+
+// 2.6 calculateDonutAngles: 1 irisan persis 360° tanpa celah & abaikan Rp 0 (PRD 19.9)
+{
+  const single = calculateDonutAngles([{ id: 'c1', nama: 'Jajan', nominal: 50000 }], 50000);
+  assert.equal(single.length, 1, 'Hanya ada 1 irisan');
+  assert.equal(single[0].startAngle, 0, 'startAngle harus 0');
+  assert.equal(single[0].endAngle, 360, 'endAngle harus 360');
+  assert.equal(single[0].angle, 360, 'angle harus persis 360 tanpa celah 2°');
+
+  // Mengabaikan irisan nominal 0
+  const withZero = calculateDonutAngles([
+    { id: 'c1', nama: 'Jajan', nominal: 50000 },
+    { id: 'c2', nama: 'Pulsa', nominal: 0 }
+  ], 50000);
+  assert.equal(withZero.length, 1, 'Irisan nominal 0 harus disaring');
+  assert.equal(withZero[0].angle, 360, 'Irisan tersisa tetap 360°');
+
+  console.log('✓ 1 irisan menghasilkan persis 360° tanpa celah dan mengabaikan Rp 0');
+}
+
+// 2.7 Transaksi dengan kategori_id tak dikenal masuk ke 'Lainnya' (PRD 19.9)
+{
+  const categories = [
+    { id: 'jajan', nama: 'Jajan & makan', limit_mingguan: 70000, tipe: 'keluar' }
+  ];
+  const transactions = [
+    { kategori_id: 'jajan', nominal: 30000, tipe: 'keluar', tanggal: '2026-10-13T10:00:00+07:00' },
+    { kategori_id: 'unknown_ghost_cat', nominal: 15000, tipe: 'keluar', tanggal: '2026-10-13T11:00:00+07:00' },
+    { kategori_id: null, nominal: 5000, tipe: 'keluar', tanggal: '2026-10-13T12:00:00+07:00' }
+  ];
+  const periodRange = {
+    start: new Date('2026-10-12T00:00:00+07:00'),
+    end: new Date('2026-10-19T00:00:00+07:00'),
+    isMonth: false
+  };
+
+  const breakdown = calculateCategoryBreakdown({
+    categories,
+    transactions,
+    periodRange,
+    mode: 'terpakai'
+  });
+
+  const lainnya = breakdown.items.find((i) => i.id === 'lainnya');
+  assert.ok(lainnya, 'Item Lainnya harus otomatis dibuat untuk kategori tak dikenal');
+  assert.equal(lainnya.nominal, 20000, 'Nominal Lainnya harus menjumlahkan transaksi tak dikenal (15k + 5k = 20k)');
+  assert.equal(breakdown.total, 50000, 'Total seluruh kategori harus 50.000');
+
+  console.log('✓ Transaksi kategori tak dikenal masuk ke Lainnya (PRD 19.9)');
+}
+
+// 2.8 Urutan slices mengikuti urut kategori sedangkan categoryList mengikuti nominal descending
+{
+  const budgets = [
+    { id: 'pulsa', nama: 'Pulsa', limit_mingguan: 10000, tipe: 'keluar', urut: 1 },
+    { id: 'jajan', nama: 'Jajan & makan', limit_mingguan: 80000, tipe: 'keluar', urut: 2 },
+    { id: 'bensin', nama: 'Bensin', limit_mingguan: 30000, tipe: 'keluar', urut: 3 }
+  ];
+
+  // Pengeluaran: Pulsa = 10.000, Jajan = 50.000, Bensin = 25.000
+  const transactions = [
+    { kategori_id: 'pulsa', nominal: 10000, tipe: 'keluar', tanggal: '2026-10-13T10:00:00+07:00' },
+    { kategori_id: 'jajan', nominal: 50000, tipe: 'keluar', tanggal: '2026-10-13T11:00:00+07:00' },
+    { kategori_id: 'bensin', nominal: 25000, tipe: 'keluar', tanggal: '2026-10-13T12:00:00+07:00' }
+  ];
+
+  const stats = calculateStats({
+    budgets,
+    transactions,
+    period: 'minggu',
+    mode: 'terpakai',
+    now: new Date('2026-10-13T12:00:00+07:00')
+  });
+
+  // PRD 19.5: categoryList diurutkan nominal terbesar dulu: Jajan (50k) > Bensin (25k) > Pulsa (10k)
+  assert.deepEqual(
+    stats.categoryList.map((c) => c.id),
+    ['jajan', 'bensin', 'pulsa'],
+    'categoryList diurutkan nominal descending'
+  );
+
+  // PRD 19.4: slices diurutkan berdasarkan 'urut' kategori searah jarum jam mulai jam 12: Pulsa (urut 1) -> Jajan (urut 2) -> Bensin (urut 3)
+  assert.deepEqual(
+    stats.slices.map((s) => s.id),
+    ['pulsa', 'jajan', 'bensin'],
+    'slices diurutkan berdasarkan urut kategori'
+  );
+
+  console.log('✓ Urutan slices mengikuti urut kategori & categoryList mengikuti nominal descending');
+}
+
+// 2.9 Ambang batas jatah rata-rata menggunakan A (kategori keluar saja)
+{
+  const budgets = [
+    { id: 'jajan', limit_mingguan: 72500, tipe: 'keluar' },
+    { id: 'pulsa', limit_mingguan: 4000, tipe: 'keluar' },
+    { id: 'bensin', limit_mingguan: 25000, tipe: 'keluar' },
+    { id: 'jajanin', limit_mingguan: 14500, tipe: 'keluar' },
+    { id: 'nabung', limit_mingguan: 29000, tipe: 'tabung' }, // Tabung bukan keluar
+    { id: 'masuk', limit_mingguan: 145000, tipe: 'masuk' } // Masuk bukan keluar
+  ];
+  // A = 72.500 + 4.000 + 25.000 + 14.500 = 116.000
+
+  const stats = calculateStats({
+    budgets,
+    transactions: [],
+    period: 'minggu',
+    mode: 'terpakai',
+    now: new Date('2026-10-13T12:00:00+07:00')
+  });
+
+  // Jatah harian rata-rata per PRD 19.6: A / 7 = 116.000 / 7 = 16.571
+  const expectedThreshold = Math.round(116000 / 7);
+  assert.equal(
+    stats.dailyBars[0].threshold,
+    expectedThreshold,
+    'Threshold harian harus Math.round(A / 7) di mana A hanya kategori keluar'
+  );
+  assert.equal(stats.dailySpending.averageBudget, expectedThreshold);
+
+  console.log('✓ Ambang batas jatah rata-rata menggunakan A (hanya kategori keluar)');
+}
+
+// ==========================================
+// 3. SUBPHASE 3.2: TABUNGAN & GOALS UI VERIFICATION
+// ==========================================
+{
+  const { readFileSync } = await import('node:fs');
+
+  // 3.1 GoalSheet.svelte
+  const goalSheetSrc = readFileSync('src/lib/components/GoalSheet.svelte', 'utf8');
+  const expectedIcons = ['🍙', '🍜', '🍰', '🥤', '🍱', '🍕', '☕', '🍔', '📱', '⛽', '🚗', '🛵', '🚌', '🎁', '🛒', '📚', '🎮', '🎬', '🐷', '💰', '💵', '🏷️', '⭐', '🐾'];
+  for (const icon of expectedIcons) {
+    assert.ok(goalSheetSrc.includes(icon), `GoalSheet must contain icon ${icon}`);
+  }
+  assert.ok(goalSheetSrc.includes('existingGoalsCount >= 10'), 'GoalSheet handles existingGoalsCount >= 10');
+  assert.ok(goalSheetSrc.includes('Maksimal 10 target'), 'GoalSheet has Maksimal 10 target label');
+  assert.ok(goalSheetSrc.includes('setoran akan menjadi tabungan umum'), 'GoalSheet has delete confirmation per PRD 18.5');
+  assert.ok(goalSheetSrc.includes('goal_'), 'GoalSheet generates goal_ id format');
+
+  // 3.2 tabungan/+page.svelte
+  const tabunganPageSrc = readFileSync('src/routes/tabungan/+page.svelte', 'utf8');
+  assert.ok(tabunganPageSrc.includes('calculateTotalSavings'), 'tabungan/+page uses calculateTotalSavings');
+  assert.ok(tabunganPageSrc.includes('calculateGeneralSavings'), 'tabungan/+page uses calculateGeneralSavings');
+  assert.ok(tabunganPageSrc.includes('calculateGoalEta'), 'tabungan/+page uses calculateGoalEta');
+  assert.ok(tabunganPageSrc.includes('goto(`/tabungan/'), 'tabungan/+page routes to detail');
+  assert.ok(tabunganPageSrc.includes('walking-cat'), 'tabungan/+page includes walking cat marker');
+  assert.ok(tabunganPageSrc.includes('🏁'), 'tabungan/+page includes finish flag');
+  assert.ok(tabunganPageSrc.includes('Tercapai'), 'tabungan/+page includes Tercapai section');
+  assert.ok(tabunganPageSrc.includes('Belum ada target'), 'tabungan/+page includes empty state');
+
+  // 3.3 tabungan/[id]/+page.svelte
+  const detailPageSrc = readFileSync('src/routes/tabungan/[id]/+page.svelte', 'utf8');
+  assert.ok(detailPageSrc.includes('page.params.id'), 'detail page reads page.params.id');
+  assert.ok(detailPageSrc.includes('QUICK_AMOUNTS'), 'detail page has quick chips');
+  assert.ok(detailPageSrc.includes('hero-split-card'), 'detail page has split hero card');
+  assert.ok(detailPageSrc.includes('canvas-confetti'), 'detail page imports canvas-confetti');
+  assert.ok(detailPageSrc.includes('celebrated_goal_'), 'detail page tracks celebration in localStorage');
+  assert.ok(detailPageSrc.includes('Target tercapai!'), 'detail page shows Target tercapai! banner');
+  assert.ok(detailPageSrc.includes('Disetor'), 'detail page shows Disetor snackbar');
+  assert.ok(detailPageSrc.includes('Nominal lain'), 'detail page has Nominal lain button');
+
+  console.log('✓ Subphase 3.2 Tabungan & Goals UI components verified');
 }
 
 console.log('--- ALL TAHAP 3 ACCEPTANCE CRITERIA VERIFIED! ---');

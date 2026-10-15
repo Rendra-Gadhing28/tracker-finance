@@ -9,7 +9,7 @@ Finance tracker pribadi untuk uang jajan mingguan. Mobile-first, terasa real tim
 | 1 | Fondasi: visi, design system, arsitektur, data, navigasi | **Disetujui** |
 | 2 | Fitur inti: Beranda, Tambah transaksi, Pengaturan budget, rumus | **Disetujui** |
 | 3 | Tabungan/Goals dan Statistik (donut interaktif) | **Disetujui** |
-| 4 | Kucing reaktif, streak, dunia dinamis, lencana, fase berikutnya, uji akhir | **Draft, menunggu persetujuan** |
+| 4 | Kucing reaktif, streak, dunia dinamis, lencana, fase berikutnya, uji akhir | **Disetujui** |
 
 Aturan kerja: satu tahap ditulis, ditinjau, disetujui, baru tahap berikutnya.
 

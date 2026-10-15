@@ -1,6 +1,7 @@
 <script>
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import CatWorld from '$lib/components/CatWorld.svelte';
+  import AchievementSheet from '$lib/components/AchievementSheet.svelte';
   import Card from '$lib/components/Card.svelte';
   import Button from '$lib/components/Button.svelte';
   import { formatRp } from '$lib/money.js';
@@ -13,7 +14,9 @@
   import {
     budgets,
     transactions,
+    goals,
     settings,
+    saveSetting,
     walletBalance,
     addTransaction,
     deleteTransaction,
@@ -21,6 +24,7 @@
     ticker
   } from '$lib/stores/data.js';
   import { sync } from '$lib/stores/sync.js';
+  import { calculateStreak, calculateBadges } from '$lib/gamification.js';
 
   const txManager = getContext('txManager');
 
@@ -144,6 +148,139 @@
       .sort((a, b) => (a.urut || 0) - (b.urut || 0));
   });
 
+  // Gamification & Streak state (PRD 23, 24, 25)
+  let isAchievementSheetOpen = $state(false);
+  let hasShownBadgeToastThisSession = false;
+  let seenBadgeIds = $state(new Set());
+  let everUnlockedBadgeIds = $state(new Set());
+
+  const streakData = $derived.by(() => {
+    const _tick = $ticker;
+    const weeklyLimit =
+      ($budgets || [])
+        .filter((b) => b.tipe === 'keluar')
+        .reduce((sum, b) => sum + (Number(b.limit_mingguan) || 0), 0) || 116000;
+
+    return calculateStreak({
+      transactions: $transactions || [],
+      totalWeeklyLimit: weeklyLimit,
+      tanpaJajan: $settings?.tanpa_jajan || '',
+      now: new Date()
+    });
+  });
+
+  const rawBadges = $derived.by(() => {
+    const _tick = $ticker;
+    const weeklyLimit =
+      ($budgets || [])
+        .filter((b) => b.tipe === 'keluar')
+        .reduce((sum, b) => sum + (Number(b.limit_mingguan) || 0), 0) || 116000;
+
+    return calculateBadges({
+      transactions: $transactions || [],
+      budgets: $budgets || [],
+      goals: $goals || [],
+      streak: streakData,
+      totalWeeklyLimit: weeklyLimit,
+      startDayOfWeek: $settings?.awal_minggu ?? 1,
+      now: new Date()
+    });
+  });
+
+  const displayBadges = $derived.by(() => {
+    return rawBadges.map((b) => {
+      const isUnlocked = b.unlocked || everUnlockedBadgeIds.has(b.id);
+      const isNew = isUnlocked && !seenBadgeIds.has(b.id);
+      return {
+        ...b,
+        unlocked: isUnlocked,
+        isNew
+      };
+    });
+  });
+
+  const displayUnlockedCount = $derived(
+    displayBadges.filter((b) => b.unlocked).length
+  );
+
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedSeen = localStorage.getItem('neko_seen_badges');
+      const storedEver = localStorage.getItem('neko_ever_unlocked_badges');
+
+      if (storedSeen === null) {
+        const initialUnlocked = rawBadges.filter((b) => b.unlocked).map((b) => b.id);
+        seenBadgeIds = new Set(initialUnlocked);
+        everUnlockedBadgeIds = new Set(initialUnlocked);
+        localStorage.setItem('neko_seen_badges', JSON.stringify(initialUnlocked));
+        localStorage.setItem('neko_ever_unlocked_badges', JSON.stringify(initialUnlocked));
+      } else {
+        const seenArr = JSON.parse(storedSeen) || [];
+        const everArr = JSON.parse(storedEver || '[]') || [];
+        seenBadgeIds = new Set(seenArr);
+        everUnlockedBadgeIds = new Set(everArr);
+      }
+    } catch (e) {
+      console.error('Error reading badge history:', e);
+    }
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined' || !$isDataLoaded) return;
+    const currentUnlocked = rawBadges.filter((b) => b.unlocked);
+    if (currentUnlocked.length === 0) return;
+
+    let updatedEver = false;
+    const newEver = new Set(everUnlockedBadgeIds);
+    for (const b of currentUnlocked) {
+      if (!newEver.has(b.id)) {
+        newEver.add(b.id);
+        updatedEver = true;
+      }
+    }
+    if (updatedEver) {
+      everUnlockedBadgeIds = newEver;
+      try {
+        localStorage.setItem('neko_ever_unlocked_badges', JSON.stringify([...newEver]));
+      } catch (e) {}
+    }
+
+    const unseen = currentUnlocked.filter((b) => !seenBadgeIds.has(b.id));
+    if (unseen.length > 0 && !hasShownBadgeToastThisSession) {
+      const firstNew = unseen[0];
+      hasShownBadgeToastThisSession = true;
+      txManager?.triggerCatReaction?.('badge');
+      txManager?.showToast?.(`Lencana baru: ${firstNew.name}`, () => {
+        handleOpenAchievementSheet();
+      });
+    }
+  });
+
+  function handleOpenAchievementSheet() {
+    isAchievementSheetOpen = true;
+    const allUnlocked = displayBadges.filter((b) => b.unlocked).map((b) => b.id);
+    seenBadgeIds = new Set(allUnlocked);
+    try {
+      localStorage.setItem('neko_seen_badges', JSON.stringify(allUnlocked));
+    } catch (e) {}
+  }
+
+  async function handleMarkTanpaJajan() {
+    const todayISO = streakData.todayISO;
+    const existingStr = $settings?.tanpa_jajan || '';
+    const existing = existingStr.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!existing.includes(todayISO)) {
+      const updated = [...existing, todayISO].slice(-60).join(',');
+      await saveSetting('tanpa_jajan', updated);
+      txManager?.triggerCatReaction?.('tanpa_jajan');
+      txManager?.showToast?.('Ditandai · Hari ini tidak jajan', async () => {
+        await saveSetting('tanpa_jajan', existingStr);
+        txManager?.triggerCatReaction?.('undo');
+      });
+    }
+  }
+
   async function handleRecordIncome() {
     const masukCat = ($budgets || []).find((c) => c.tipe === 'masuk') || {
       id: 'masuk',
@@ -156,7 +293,11 @@
       nominal,
       catatan: 'Uang jajan mingguan'
     });
-    txManager?.showToast?.(`Dicatat ${formatRp(nominal)}`, () => deleteTransaction(created.id));
+    txManager?.triggerCatReaction?.('masuk');
+    txManager?.showToast?.(`Dicatat ${formatRp(nominal)}`, async () => {
+      await deleteTransaction(created.id);
+      txManager?.triggerCatReaction?.('undo');
+    });
   }
 
   function formatTime(isoString) {
@@ -291,6 +432,8 @@
       <CatWorld
         r={activeSummary.r}
         sisa_hari={activeSummary.sisa_hari}
+        streak={streakData.currentStreak}
+        onregister={(fn) => txManager?.registerCatReaction?.(fn)}
       />
     </section>
 
@@ -381,6 +524,41 @@
             {/if}
           </span>
         </div>
+
+        <!-- 7-day streak track (PRD 23.4) -->
+        <div
+          class="streak-track-row"
+          role="button"
+          tabindex="0"
+          onclick={handleOpenAchievementSheet}
+          onkeydown={(e) => e.key === 'Enter' && handleOpenAchievementSheet()}
+          aria-label="Lihat pencapaian. {streakData.streakTitle}"
+        >
+          <div class="streak-badges-list">
+            {#each streakData.last7Days as day}
+              <span
+                class="streak-pill-dot {day.type}"
+                title="{day.dayLabel}: {day.type}"
+              >
+                {day.symbol}
+              </span>
+            {/each}
+          </div>
+          <span class="streak-title-label">
+            {streakData.streakTitle}
+          </span>
+        </div>
+
+        <!-- Tombol Hari ini tidak jajan (PRD 23.3) -->
+        {#if streakData.canMarkTanpaJajanToday}
+          <button
+            type="button"
+            class="tanpa-jajan-btn"
+            onclick={handleMarkTanpaJajan}
+          >
+            Hari ini tidak jajan 🌙
+          </button>
+        {/if}
       {/if}
     </Card>
 
@@ -521,6 +699,16 @@
       {/if}
     </section>
   {/if}
+
+  <AchievementSheet
+    bind:open={isAchievementSheetOpen}
+    currentStreak={streakData.currentStreak}
+    bestStreak={streakData.bestStreak}
+    badges={displayBadges}
+    unlockedCount={displayUnlockedCount}
+    totalBadges={rawBadges.totalBadges || 10}
+    onclose={() => (isAchievementSheetOpen = false)}
+  />
 </div>
 
 <style>
@@ -716,6 +904,98 @@
   .daily-value {
     font-weight: 700;
     color: var(--ink);
+  }
+
+  /* 7-Day Streak Track Row (PRD 23.4) */
+  .streak-track-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: opacity 120ms ease-out;
+  }
+
+  .streak-track-row:active {
+    opacity: 0.8;
+  }
+
+  .streak-badges-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .streak-pill-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    box-sizing: border-box;
+    transition: transform 120ms ease-out;
+  }
+
+  .streak-pill-dot.hemat {
+    background-color: #FBE6D3;
+    color: #D97736;
+    border: 1.5px solid #F3C7A2;
+  }
+
+  .streak-pill-dot.lewat {
+    background-color: #FCE8E6;
+    color: #D96B6B;
+    border: 1.5px solid #F7C8C4;
+  }
+
+  .streak-pill-dot.kosong {
+    background-color: #F3EFE9;
+    color: #9E9485;
+    border: 1.5px solid #E2DDD5;
+  }
+
+  .streak-pill-dot.today {
+    background-color: transparent;
+    color: var(--ink);
+    border: 1.5px dashed #A89F91;
+  }
+
+  .streak-title-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mute);
+    text-align: right;
+  }
+
+  /* Tanpa Jajan Button (PRD 23.3) */
+  .tanpa-jajan-btn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background-color: var(--card);
+    border: 2px solid var(--accent);
+    border-bottom: 3px solid var(--accent-pressed);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 100ms ease-out, border-bottom 100ms ease-out;
+  }
+
+  .tanpa-jajan-btn:active {
+    transform: translateY(2px);
+    border-bottom-width: 1px;
   }
 
   /* 5. Summary Grid */

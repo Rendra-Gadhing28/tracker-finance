@@ -132,30 +132,65 @@ export function calculateCategoryBreakdown({
 
   // PRD 19.4: Semua kategori bertipe 'keluar' dan 'tabung' (pemasukan tidak termasuk)
   const validCategories = (categories || []).filter((c) => c.tipe !== 'masuk');
+  const knownCatIds = new Set(validCategories.map((c) => c.id));
 
   const spentByCatId = new Map();
+  let unknownCatSpent = 0;
+
   for (const tx of periodTxs) {
-    const cId = tx.kategori_id || 'lainnya';
-    spentByCatId.set(cId, (spentByCatId.get(cId) || 0) + (Math.round(Number(tx.nominal)) || 0));
+    const nom = Math.round(Number(tx.nominal)) || 0;
+    const cId = tx.kategori_id;
+    if (cId && knownCatIds.has(cId)) {
+      spentByCatId.set(cId, (spentByCatId.get(cId) || 0) + nom);
+    } else {
+      // PRD 19.9: Transaksi tanpa kategori atau kategori tak dikenal masuk ke 'Lainnya'
+      unknownCatSpent += nom;
+    }
   }
 
   let catItems = validCategories.map((cat) => {
     const limit = Math.round(Number(cat.limit_mingguan ?? cat.limit)) || 0;
     const rencanaNominal = periodIsMonth ? limit * 4 : limit;
-    const terpakaiNominal = spentByCatId.get(cat.id) || 0;
+    let terpakaiNominal = spentByCatId.get(cat.id) || 0;
+    if (cat.id === 'lainnya') {
+      terpakaiNominal += unknownCatSpent;
+    }
     const nominal = mode === 'rencana' ? rencanaNominal : terpakaiNominal;
     const color = cat.color || CATEGORY_COLORS[cat.warna] || CATEGORY_COLORS[cat.id] || { fill: '#F0EBE1', border: '#D5CBBB' };
 
     return {
       ...cat,
+      urut: cat.urut ?? (cat.id === 'lainnya' ? 9999 : 99),
       limit: rencanaNominal,
       rencanaNominal,
       terpakaiNominal,
       nominal,
       color,
+      borderHex: color.border,
+      warnaHex: color.fill,
       selisih: rencanaNominal - terpakaiNominal
     };
   });
+
+  // Jika ada transaksi kategori tak dikenal dan belum ada kategori 'lainnya' di daftar
+  if (unknownCatSpent > 0 && !validCategories.some((c) => c.id === 'lainnya')) {
+    const color = { fill: '#F0EBE1', border: '#D5CBBB' };
+    catItems.push({
+      id: 'lainnya',
+      nama: 'Lainnya',
+      ikon: '🏷️',
+      color,
+      borderHex: color.border,
+      warnaHex: color.fill,
+      nominal: mode === 'rencana' ? 0 : unknownCatSpent,
+      rencanaNominal: 0,
+      terpakaiNominal: unknownCatSpent,
+      limit: 0,
+      selisih: -unknownCatSpent,
+      tipe: 'keluar',
+      urut: 9999
+    });
+  }
 
   // Sort by nominal descending
   catItems.sort((a, b) => b.nominal - a.nominal);
@@ -169,27 +204,59 @@ export function calculateCategoryBreakdown({
     const restNominal = rest.reduce((sum, c) => sum + c.nominal, 0);
     const restRencana = rest.reduce((sum, c) => sum + (c.rencanaNominal || 0), 0);
     const restTerpakai = rest.reduce((sum, c) => sum + (c.terpakaiNominal || 0), 0);
+    const color = { fill: '#F0EBE1', border: '#D5CBBB' };
 
     const lainnyaItem = {
       id: 'lainnya',
       nama: 'Lainnya',
       ikon: '🏷️',
-      color: { fill: '#F0EBE1', border: '#D5CBBB' },
+      color,
+      borderHex: color.border,
+      warnaHex: color.fill,
       nominal: restNominal,
       rencanaNominal: restRencana,
       terpakaiNominal: restTerpakai,
       limit: restRencana,
       selisih: restRencana - restTerpakai,
-      tipe: 'keluar'
+      tipe: 'keluar',
+      urut: 9999
     };
 
     slicedItems = [...top7, lainnyaItem];
   }
 
   // Calculate percentages using calculateLargestRemainder
-  const items = calculateLargestRemainder(slicedItems);
-  const total = items.reduce((sum, c) => sum + c.nominal, 0);
-  const maxNominal = items.length > 0 ? Math.max(...items.map((c) => c.nominal)) : 0;
+  const rawItems = calculateLargestRemainder(slicedItems);
+  const total = rawItems.reduce((sum, c) => sum + c.nominal, 0);
+  const maxNominal = rawItems.length > 0 ? Math.max(...rawItems.map((c) => c.nominal)) : 0;
+
+  const items = rawItems.map((item) => {
+    const selisih = item.rencanaNominal - item.terpakaiNominal;
+    const selisihType = selisih >= 0 ? 'hemat' : 'lewat';
+    const selisihText = selisih >= 0
+      ? `Hemat ${formatRp(selisih)}`
+      : `Lewat ${formatRp(Math.abs(selisih))}`;
+    const barPercent = maxNominal > 0 ? Math.round((item.nominal / maxNominal) * 100) : 0;
+    const color = item.color || CATEGORY_COLORS[item.warna] || CATEGORY_COLORS[item.id] || { fill: '#F0EBE1', border: '#D5CBBB' };
+
+    return {
+      ...item,
+      urut: item.urut ?? (item.id === 'lainnya' ? 9999 : 99),
+      selisih,
+      selisihType,
+      selisihText,
+      barPercent,
+      borderHex: color.border,
+      warnaHex: color.fill
+    };
+  });
+
+  // PRD 19.4 & 19.5: Urutkan nominal terbesar dulu, dengan 'lainnya' selalu di posisi terakhir
+  items.sort((a, b) => {
+    if (a.id === 'lainnya') return 1;
+    if (b.id === 'lainnya') return -1;
+    return b.nominal - a.nominal;
+  });
 
   return {
     items,
@@ -266,6 +333,8 @@ export function calculateDailySpending({
         date: dayStart,
         nominal,
         value: nominal,
+        threshold: averageBudget,
+        isOver: isOverBudget,
         isOverBudget,
         isFuture
       });
@@ -305,6 +374,8 @@ export function calculateDailySpending({
         date: sliceStart,
         nominal,
         value: nominal,
+        threshold: averageBudget,
+        isOver: isOverBudget,
         isOverBudget,
         isFuture
       });
@@ -435,17 +506,18 @@ export function generateInsights({
  * Calculate Donut slice angles ensuring minimum 3 degrees per slice for touch targets.
  */
 export function calculateDonutAngles(slices = [], total = 0) {
-  const n = slices.length;
+  const nonZeroSlices = (slices || []).filter((s) => (Number(s.nominal) || 0) > 0);
+  const n = nonZeroSlices.length;
   if (n === 0 || total <= 0) return [];
   if (n === 1) {
-    return [{ ...slices[0], startAngle: 0, endAngle: 360, angle: 360 }];
+    return [{ ...nonZeroSlices[0], startAngle: 0, endAngle: 360, angle: 360 }];
   }
 
   const gap = 2; // 2 degree gap per PRD 19.4
   const totalGap = n * gap;
   const availableArc = 360 - totalGap;
 
-  const rawAngles = slices.map((s) => ((s.nominal || 0) / total) * availableArc);
+  const rawAngles = nonZeroSlices.map((s) => ((Number(s.nominal) || 0) / total) * availableArc);
   let smallCount = 0;
   let largeNominalTotal = 0;
 
@@ -453,19 +525,19 @@ export function calculateDonutAngles(slices = [], total = 0) {
     if (rawAngles[i] < 3) {
       smallCount++;
     } else {
-      largeNominalTotal += slices[i].nominal || 0;
+      largeNominalTotal += Number(nonZeroSlices[i].nominal) || 0;
     }
   }
 
   const remainingArc = availableArc - smallCount * 3;
 
   let currentAngle = 0;
-  return slices.map((s, i) => {
+  return nonZeroSlices.map((s, i) => {
     let angle;
     if (rawAngles[i] < 3) {
       angle = 3;
     } else if (largeNominalTotal > 0) {
-      angle = ((s.nominal || 0) / largeNominalTotal) * remainingArc;
+      angle = ((Number(s.nominal) || 0) / largeNominalTotal) * remainingArc;
     } else {
       angle = availableArc / n;
     }
@@ -494,9 +566,18 @@ export function calculateStats({
   weekOffset = 0,
   monthOffset = 0,
   startDayOfWeek = 1,
-  weeklyAllowance = 145000,
+  weeklyAllowance,
   now = new Date()
 } = {}) {
+  // Ambang batas jatah rata-rata menggunakan A (kategori keluar saja, default 116000 jika kosong)
+  let allowance = weeklyAllowance;
+  if (allowance === undefined || allowance === null) {
+    const keluarCats = (budgets || []).filter((b) => b.tipe === 'keluar');
+    allowance = keluarCats.length > 0
+      ? keluarCats.reduce((sum, b) => sum + (Number(b.limit_mingguan) || 0), 0)
+      : 116000;
+  }
+
   const offset = period === 'minggu' ? weekOffset : monthOffset;
   const periodRange = getPeriodRange(period, now, startDayOfWeek, offset);
   const isMonth = period === 'bulan';
@@ -508,7 +589,7 @@ export function calculateStats({
     mode
   });
 
-  const averageBudget = isMonth ? weeklyAllowance : Math.round(weeklyAllowance / 7);
+  const averageBudget = isMonth ? allowance : Math.round(allowance / 7);
   const dailyBars = calculateDailySpending({
     transactions,
     periodRange,
@@ -525,7 +606,15 @@ export function calculateStats({
     mode
   });
 
-  const slices = calculateDonutAngles(breakdown.items, breakdown.total);
+  // PRD 19.4: Donut irisan disaring hanya nominal > 0 dan diurutkan berdasarkan 'urut' (Lainnya di akhir)
+  const positiveItems = breakdown.items.filter((item) => (Number(item.nominal) || 0) > 0);
+  const sliceCandidates = [...positiveItems].sort((a, b) => {
+    const urutA = a.id === 'lainnya' ? 9999 : (a.urut ?? 99);
+    const urutB = b.id === 'lainnya' ? 9999 : (b.urut ?? 99);
+    return urutA - urutB;
+  });
+
+  const slices = calculateDonutAngles(sliceCandidates, breakdown.total);
 
   return {
     period,
@@ -535,6 +624,7 @@ export function calculateStats({
     slices,
     categoryList: breakdown.items,
     dailyBars,
+    dailySpending: dailyBars,
     insights,
     hasData: breakdown.total > 0
   };

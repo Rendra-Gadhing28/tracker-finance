@@ -73,6 +73,17 @@
     isSnackbarOpen = true;
   }
 
+  // Cat reaction trigger
+  let catReactionCallback = null;
+
+  function registerCatReaction(fn) {
+    catReactionCallback = fn;
+  }
+
+  function triggerCatReaction(actionType, detail = {}) {
+    catReactionCallback?.(actionType, detail);
+  }
+
   // Provide to child pages via Svelte context
   setContext('txManager', {
     openCreate,
@@ -81,7 +92,9 @@
     setActiveWeekDate: (d) => {
       activeWeekDate = d;
     },
-    getHighlightedTxId: () => highlightedTxId
+    getHighlightedTxId: () => highlightedTxId,
+    registerCatReaction,
+    triggerCatReaction
   });
 
   // Calculate category spent map for warning pills
@@ -96,11 +109,20 @@
   });
 
   async function handleSaveTransaction(txData) {
+    const meta = ($budgets || []).find((b) => b.id === txData.kategori_id);
+    const spentBefore = categorySpentMap[txData.kategori_id] || 0;
+    const catLimit = Number(meta?.limit_mingguan) || Infinity;
+
     if (txSheetMode === 'edit') {
       const originalTx = { ...activeTx };
       await updateTransaction(txData);
+      triggerCatReaction(
+        txData.tipe === 'tabung' ? 'tabung' : txData.tipe === 'masuk' ? 'masuk' : 'keluar_lain',
+        { icon: meta?.ikon || '💸' }
+      );
       showToast(`Diperbarui ${formatRp(txData.nominal)}`, async () => {
         await updateTransaction(originalTx);
+        triggerCatReaction('undo');
       });
     } else {
       const created = await addTransaction(txData);
@@ -111,8 +133,29 @@
           highlightedTxId = null;
         }
       }, 1200); // 1.2s flash per PRD 12.4
+
+      if (txData.tipe === 'keluar') {
+        const isOver = spentBefore + Number(txData.nominal) > catLimit;
+        if (isOver) {
+          triggerCatReaction('over_limit');
+        } else if (
+          txData.kategori_id === 'makan' ||
+          meta?.ikon === '🍙' ||
+          meta?.nama?.toLowerCase().includes('makan')
+        ) {
+          triggerCatReaction('keluar_makan');
+        } else {
+          triggerCatReaction('keluar_lain', { icon: meta?.ikon || '💸' });
+        }
+      } else if (txData.tipe === 'masuk') {
+        triggerCatReaction('masuk');
+      } else if (txData.tipe === 'tabung') {
+        triggerCatReaction('tabung');
+      }
+
       showToast(`Dicatat ${formatRp(created.nominal)}`, async () => {
         await deleteTransaction(created.id);
+        triggerCatReaction('undo');
       });
     }
   }
@@ -122,6 +165,7 @@
     await deleteTransaction(txId);
     showToast(`Dihapus`, async () => {
       await addTransaction(deletedTx);
+      triggerCatReaction('undo');
     });
   }
 

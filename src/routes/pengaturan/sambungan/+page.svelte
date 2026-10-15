@@ -70,14 +70,26 @@
           statusMessage = json.error || 'Tidak bisa terhubung. Cek URL dan sinyal.';
         }
       } else {
-        const categories = json.data?.budget || [];
+        const categories = json.data?.budget || json.budget || [];
         if (categories.length === 0) {
           statusType = 'error';
           statusMessage = 'Jalankan setup() di Apps Script dulu.';
         } else {
           statusType = 'success';
           statusMessage = `✓ Terhubung · ${categories.length} kategori ditemukan`;
-          testedData = json.data;
+          let settingList = [];
+          const rawSetting = json.settings || json.setting || json.data?.setting;
+          if (Array.isArray(rawSetting)) {
+            settingList = rawSetting;
+          } else if (rawSetting && typeof rawSetting === 'object') {
+            settingList = Object.entries(rawSetting).map(([k, v]) => ({ key: k, value: v }));
+          }
+          testedData = json.data || {
+            budget: categories,
+            goals: json.goals || [],
+            transaksi: json.tx || json.transaksi || [],
+            setting: settingList
+          };
         }
       }
     } catch {

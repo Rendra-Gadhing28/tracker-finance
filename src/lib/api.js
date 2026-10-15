@@ -169,8 +169,32 @@ export function fetchAll() {
 
       const res = await fetch(reqUrl.toString(), { method: 'GET' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      return json;
+      const raw = await res.json();
+      if (!raw || !raw.ok) return raw;
+
+      const budget = raw.budget || raw.data?.budget || [];
+      const goals = raw.goals || raw.data?.goals || [];
+      const transaksi = raw.tx || raw.transaksi || raw.data?.transaksi || [];
+
+      let setting = [];
+      const rawSetting = raw.settings || raw.setting || raw.data?.setting;
+      if (Array.isArray(rawSetting)) {
+        setting = rawSetting;
+      } else if (rawSetting && typeof rawSetting === 'object') {
+        setting = Object.entries(rawSetting).map(([key, value]) => ({ key, value }));
+      }
+
+      return {
+        ok: true,
+        rev: raw.rev,
+        version: raw.version,
+        data: {
+          transaksi,
+          budget,
+          goals,
+          setting
+        }
+      };
     } catch (err) {
       console.warn('fetchAll remote failed, using local mock data:', err);
       return await mockFetchAll();
@@ -228,6 +252,7 @@ export async function postAction(action, payload, options = {}) {
     const body = {
       action,
       token,
+      data: payload,
       payload,
       ...(typeof payload === 'object' && payload !== null ? payload : {})
     };

@@ -25,11 +25,20 @@
 
   let selectedSliceId = $state(null);
   let unfoldedCatId = $state(null);
+  let showAllTx = $state(false);
   let activeBarTooltip = $state(null);
 
   const isCurrentPeriod = $derived(
     period === 'minggu' ? weekOffset === 0 : monthOffset === 0
   );
+
+  // Ambang Batas Jatah Rata-rata Statistik: hitung A dari kategori 'keluar' (default 116.000)
+  const weeklyA = $derived.by(() => {
+    const keluarCats = ($budgets || []).filter((b) => b.tipe === 'keluar');
+    return keluarCats.length > 0
+      ? keluarCats.reduce((sum, b) => sum + (Number(b.limit_mingguan) || 0), 0)
+      : 116000;
+  });
 
   // Compute stats
   const stats = $derived.by(() => {
@@ -41,7 +50,7 @@
       weekOffset,
       monthOffset,
       startDayOfWeek: $settings?.awal_minggu ?? 1,
-      weeklyAllowance: Number($settings?.uang_jajan_mingguan) || 145000,
+      weeklyAllowance: weeklyA,
       now: new Date()
     });
   });
@@ -69,6 +78,7 @@
     }
     selectedSliceId = null;
     unfoldedCatId = null;
+    showAllTx = false;
     activeBarTooltip = null;
   }
 
@@ -81,6 +91,7 @@
     }
     selectedSliceId = null;
     unfoldedCatId = null;
+    showAllTx = false;
     activeBarTooltip = null;
   }
 
@@ -88,9 +99,11 @@
     if (selectedSliceId === cat.id) {
       selectedSliceId = null;
       unfoldedCatId = null;
+      showAllTx = false;
     } else {
       selectedSliceId = cat.id;
       unfoldedCatId = cat.id;
+      showAllTx = false;
     }
   }
 
@@ -99,14 +112,20 @@
     if (!unfoldedCatId) return [];
     const startMs = stats.range.start.getTime();
     const endMs = stats.range.end.getTime();
+    const knownCatIds = new Set(($budgets || []).map((b) => b.id));
 
     return ($transactions || [])
       .filter((t) => {
         const d = new Date(t.tanggal).getTime();
+        const matchesCategory =
+          unfoldedCatId === 'lainnya'
+            ? (!t.kategori_id || !knownCatIds.has(t.kategori_id) || t.kategori_id === 'lainnya')
+            : t.kategori_id === unfoldedCatId;
+
         return (
           d >= startMs &&
           d < endMs &&
-          (t.kategori_id === unfoldedCatId || (unfoldedCatId === 'lainnya' && !t.kategori_id)) &&
+          matchesCategory &&
           (t.tipe === 'keluar' || t.tipe === 'tabung')
         );
       })
@@ -116,7 +135,7 @@
   // Calculate maximum value for daily bars scale
   const maxBarValue = $derived.by(() => {
     const maxVal = Math.max(...stats.dailyBars.map((b) => b.value), 1);
-    const threshold = stats.dailyBars[0]?.threshold || 1;
+    const threshold = stats.dailySpending?.averageBudget || stats.dailyBars?.[0]?.threshold || 1;
     return Math.max(maxVal, threshold * 1.25);
   });
 </script>
@@ -195,6 +214,7 @@
       slices={stats.slices}
       totalAmount={stats.totalAmount}
       {mode}
+      periodKey={`${period}_${weekOffset}_${monthOffset}`}
       bind:selectedSliceId
     />
   </Card>
@@ -256,10 +276,11 @@
 
           <!-- Unfolded Top Transactions (PRD 19.5) -->
           {#if unfoldedCatId === cat.id && unfoldedTransactions.length > 0}
+            {@const displayedTxs = showAllTx ? unfoldedTransactions : unfoldedTransactions.slice(0, 3)}
             <div class="unfolded-txs-container">
               <span class="unfolded-header">Transaksi terbesar:</span>
               <div class="unfolded-items">
-                {#each unfoldedTransactions.slice(0, 3) as tx}
+                {#each displayedTxs as tx}
                   <div
                     class="unfolded-item"
                     role="button"
@@ -272,6 +293,16 @@
                   </div>
                 {/each}
               </div>
+
+              {#if unfoldedTransactions.length > 3}
+                <button
+                  type="button"
+                  class="btn-see-all"
+                  onclick={() => (showAllTx = !showAllTx)}
+                >
+                  {showAllTx ? 'Tutup' : `Lihat semua (${unfoldedTransactions.length})`}
+                </button>
+              {/if}
             </div>
           {/if}
         </div>
@@ -286,15 +317,16 @@
         {period === 'minggu' ? 'Pengeluaran per hari' : 'Pengeluaran per minggu'}
       </h3>
       <span class="average-hint">
-        ┄ rata-rata {formatRp(stats.dailyBars[0]?.threshold || 0)}
+        ┄ rata-rata {formatRp(stats.dailySpending?.averageBudget || stats.dailyBars?.[0]?.threshold || 0)}
       </span>
     </div>
 
     <Card variant="neutral" class="daily-bars-card">
       <div class="bars-container">
         <!-- Average threshold dashed line -->
-        {#if stats.dailyBars[0]?.threshold}
-          {@const thresholdPct = Math.round((stats.dailyBars[0].threshold / maxBarValue) * 100)}
+        {#if (stats.dailySpending?.averageBudget || stats.dailyBars?.[0]?.threshold)}
+          {@const thresholdVal = stats.dailySpending?.averageBudget || stats.dailyBars?.[0]?.threshold}
+          {@const thresholdPct = Math.round((thresholdVal / maxBarValue) * 100)}
           <div
             class="threshold-line"
             style="bottom: {thresholdPct}%"
@@ -321,7 +353,7 @@
 
             <div class="bar-pillar-wrap">
               <div
-                class="bar-pillar {bar.isOver ? 'over' : ''}"
+                class="bar-pillar {(bar.isOver || bar.isOverBudget) ? 'over' : ''}"
                 style="height: {heightPct}%"
               ></div>
             </div>
@@ -616,6 +648,32 @@
   .tx-val {
     color: var(--ink);
     font-weight: 700;
+  }
+
+  .btn-see-all {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: 999px;
+    margin-top: 4px;
+    align-self: center;
+    transition: background-color 150ms ease;
+  }
+
+  .btn-see-all:hover {
+    background-color: rgba(229, 154, 106, 0.12);
+  }
+
+  .btn-see-all:active {
+    background-color: rgba(229, 154, 106, 0.22);
   }
 
   /* 5. Daily Spending Bars */

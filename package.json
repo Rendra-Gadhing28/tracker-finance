@@ -7,7 +7,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"test": "node test/tahap2.test.js && node test/tahap3.test.js"
+		"test": "node test/tahap2.test.js && node test/tahap3.test.js && node test/tahap4.test.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",

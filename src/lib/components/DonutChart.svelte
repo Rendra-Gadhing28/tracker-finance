@@ -27,6 +27,7 @@
     slices = [],
     totalAmount = 0,
     mode = 'terpakai',
+    periodKey = '',
     selectedSliceId = $bindable(null),
     onselect = undefined
   } = $props();
@@ -130,6 +131,24 @@
       <filter id="blossomShadow" x="-20%" y="-20%" width="140%" height="140%">
         <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#4A3B32" flood-opacity="0.15" />
       </filter>
+
+      <!-- Sweep Mask for 700ms initial sweep / period change animation (PRD 19.4) -->
+      <mask id="donutSweepMask">
+        {#key periodKey}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={baseR}
+            fill="none"
+            stroke="#ffffff"
+            stroke-width={baseThickness + 24}
+            stroke-dasharray="553"
+            stroke-dashoffset="553"
+            class="sweep-mask-circle"
+            transform="rotate(-90 {cx} {cy})"
+          />
+        {/key}
+      </mask>
     </defs>
 
     <!-- PEEKING CAT ON TOP OF THE RING (PRD 19.4) -->
@@ -211,7 +230,7 @@
         class="empty-donut-ring"
       />
     {:else}
-      <g class="donut-slices-group">
+      <g class="donut-slices-group" mask="url(#donutSweepMask)">
         {#each slices as slice (slice.id)}
           {@const isSelected = selectedSliceId === slice.id}
           {@const hasSelection = selectedSliceId !== null}
@@ -230,7 +249,7 @@
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <path
             d={pathD}
-            fill={slice.borderHex || slice.warnaHex}
+            fill={slice.color?.border || slice.borderHex || slice.warnaHex || '#D5CBBB'}
             stroke="var(--card)"
             stroke-width="1.5"
             stroke-linejoin="round"
@@ -260,7 +279,7 @@
       {#if slices.length === 0 || totalAmount <= 0}
         <text
           x={cx}
-          y={cy - 6}
+          y={cy - 10}
           text-anchor="middle"
           class="center-empty-text-1"
         >
@@ -268,11 +287,19 @@
         </text>
         <text
           x={cx}
-          y={cy + 12}
+          y={cy + 10}
           text-anchor="middle"
           class="center-empty-text-2"
         >
           pengeluaran
+        </text>
+        <text
+          x={cx}
+          y={cy + 28}
+          text-anchor="middle"
+          class="center-empty-text-3"
+        >
+          di periode ini
         </text>
       {:else if selectedSlice}
         <!-- Selected Slice View -->
@@ -317,7 +344,8 @@
 
   .donut-slice {
     cursor: pointer;
-    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transition: d 500ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
                 opacity 200ms ease-out;
     outline: none;
   }
@@ -372,8 +400,9 @@
 
   /* Center Typography */
   .center-empty-text-1,
-  .center-empty-text-2 {
-    font-size: 12px;
+  .center-empty-text-2,
+  .center-empty-text-3 {
+    font-size: 11px;
     font-family: inherit;
     font-weight: 500;
     fill: var(--mute);
@@ -411,10 +440,28 @@
     fill: var(--mute);
   }
 
+  .sweep-mask-circle {
+    animation: sweepMaskAnim 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+
+  @keyframes sweepMaskAnim {
+    from {
+      stroke-dashoffset: 553;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .donut-slice,
-    .cat-pupil {
+    .cat-pupil,
+    .sweep-mask-circle {
       transition: none !important;
+      animation: none !important;
+    }
+    .sweep-mask-circle {
+      stroke-dashoffset: 0 !important;
     }
     .twitch-left,
     .twitch-right {
