@@ -58,13 +58,14 @@
 <style>
   .snackbar-container {
     position: fixed;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(88px + env(safe-area-inset-bottom, 12px));
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 32px);
-    max-width: 440px;
-    background-color: #382C24;
-    color: #FFFDF7;
+    max-width: 416px;
+    background: rgba(8, 14, 22, 0.95);
+    color: var(--komorebi);
+    border: 1px solid var(--edge-bright);
     border-radius: var(--radius-chip, 999px);
     padding: 12px 18px;
     display: flex;
@@ -72,7 +73,9 @@
     justify-content: space-between;
     gap: 12px;
     z-index: 95;
-    box-shadow: 0 4px 16px rgba(56, 44, 36, 0.25);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), var(--glow-aether);
     box-sizing: border-box;
     animation: snackbarSlideUp 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -84,24 +87,25 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--komorebi);
   }
 
   .snackbar-action-btn {
     border: none;
     background: transparent;
-    color: #F4D58D;
+    color: var(--bara);
     font-weight: 700;
     font-size: 14px;
     cursor: pointer;
-    padding: 4px 6px;
+    padding: 4px 8px;
     flex-shrink: 0;
     border-radius: 8px;
-    transition: transform 100ms ease-out;
+    transition: transform 100ms ease-out, color 150ms ease-out;
   }
 
   .snackbar-action-btn:active {
     transform: scale(0.95);
-    color: #FFFFFF;
+    color: var(--komorebi);
   }
 
   @keyframes snackbarSlideUp {

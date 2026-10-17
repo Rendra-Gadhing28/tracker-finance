@@ -146,19 +146,19 @@
 
 <div class="stats-page">
   <!-- 1. Period & Mode Controls -->
-  <div class="controls-card">
+  <div class="controls-card glass-panel">
     <!-- Period Segmented [ Minggu ] [ Bulan ] -->
     <div class="segmented-control" role="tablist">
       <button
         type="button"
-        class="seg-btn {period === 'minggu' ? 'active' : ''}"
+        class="seg-btn interactive-tap {period === 'minggu' ? 'active' : ''}"
         onclick={() => { period = 'minggu'; weekOffset = 0; selectedSliceId = null; }}
       >
         Minggu
       </button>
       <button
         type="button"
-        class="seg-btn {period === 'bulan' ? 'active' : ''}"
+        class="seg-btn interactive-tap {period === 'bulan' ? 'active' : ''}"
         onclick={() => { period = 'bulan'; monthOffset = 0; selectedSliceId = null; }}
       >
         Bulan
@@ -169,16 +169,16 @@
     <div class="period-navigator">
       <button
         type="button"
-        class="period-nav-arrow"
+        class="period-nav-arrow interactive-tap"
         onclick={handlePrevPeriod}
         aria-label="Periode sebelumnya"
       >
         ‹
       </button>
-      <span class="period-title">{periodLabel}</span>
+      <span class="period-title font-num">{periodLabel}</span>
       <button
         type="button"
-        class="period-nav-arrow"
+        class="period-nav-arrow interactive-tap"
         disabled={isCurrentPeriod}
         onclick={handleNextPeriod}
         aria-label="Periode berikutnya"
@@ -192,14 +192,14 @@
       <div class="segmented-control mode-seg" role="tablist">
         <button
           type="button"
-          class="seg-btn {mode === 'terpakai' ? 'active' : ''}"
+          class="seg-btn interactive-tap {mode === 'terpakai' ? 'active' : ''}"
           onclick={() => (mode = 'terpakai')}
         >
           Terpakai
         </button>
         <button
           type="button"
-          class="seg-btn {mode === 'rencana' ? 'active' : ''}"
+          class="seg-btn interactive-tap {mode === 'rencana' ? 'active' : ''}"
           onclick={() => (mode = 'rencana')}
         >
           Rencana
@@ -235,11 +235,11 @@
   <section class="breakdown-section" aria-label="Rincian Kategori">
     <h3 class="section-title">Rincian Kategori</h3>
     <div class="category-breakdown-list">
-      {#each stats.categoryList as cat}
+      {#each stats.categoryList as cat, i}
         {@const isZero = cat.nominal === 0}
         {@const isSelected = selectedSliceId === cat.id}
 
-        <div class="cat-breakdown-wrapper">
+        <div class="cat-breakdown-wrapper animate-stagger" style="--i: {i}">
           <Card
             variant={cat.warna || 'jajan'}
             interactive
@@ -286,7 +286,7 @@
                     role="button"
                     tabindex="0"
                     onclick={() => txManager?.openEdit?.(tx)}
-                    onkeydown={(e) => e.key === 'Enter' && txManager?.openEdit?.(tx)}
+                    onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && txManager?.openEdit?.(tx)}
                   >
                     <span class="tx-note">{tx.catatan || cat.nama}</span>
                     <span class="tx-val tabular-nums">−{formatRp(tx.nominal)}</span>
@@ -342,7 +342,7 @@
             onclick={() => (activeBarTooltip = activeBarTooltip === bar.label ? null : bar.label)}
             role="button"
             tabindex="0"
-            onkeydown={(e) => e.key === 'Enter' && (activeBarTooltip = bar.label)}
+            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (activeBarTooltip = bar.label)}
             aria-label="{bar.label}: {formatRp(bar.value)}"
           >
             {#if activeBarTooltip === bar.label}
@@ -371,25 +371,24 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* 1. Controls Card */
   .controls-card {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    background-color: var(--card);
-    border: 2px solid var(--line);
-    border-bottom: 4px solid #D6C8B2;
-    border-radius: var(--radius-card, 22px);
-    padding: 12px 14px;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 22px;
   }
 
   .segmented-control {
     display: flex;
-    background-color: var(--bg);
-    border: 1.5px solid var(--line);
-    border-radius: var(--radius-btn, 16px);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--edge-soft);
+    border-radius: 14px;
     padding: 3px;
     gap: 4px;
   }
@@ -403,18 +402,19 @@
     min-height: 38px;
     border: none;
     background: transparent;
-    border-radius: 12px;
+    border-radius: 11px;
     font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     cursor: pointer;
-    transition: all 120ms ease-out;
+    transition: all 140ms ease;
   }
 
   .seg-btn.active {
-    background-color: var(--card);
-    color: var(--ink);
-    box-shadow: 0 2px 6px rgba(74, 59, 50, 0.08);
+    background: var(--glass-3);
+    color: var(--komorebi);
+    border: 1px solid var(--edge-bright);
+    box-shadow: 0 0 10px rgba(59, 154, 184, 0.15);
   }
 
   .period-navigator {
@@ -425,43 +425,68 @@
   }
 
   .period-nav-arrow {
+    position: relative;
     border: none;
-    background: transparent;
-    font-size: 26px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    font-size: 22px;
     line-height: 1;
-    color: var(--ink);
+    color: var(--komorebi);
     cursor: pointer;
-    padding: 2px 10px;
-    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 120ms ease;
+  }
+
+  .period-nav-arrow::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+
+  .period-nav-arrow:hover {
+    background: var(--glass-2);
+    border-color: var(--edge-bright);
+  }
+
+  .period-nav-arrow:active {
+    transform: scale(0.94);
   }
 
   .period-nav-arrow:disabled {
-    opacity: 0.25;
+    opacity: 0.2;
     cursor: not-allowed;
+    border-color: transparent;
   }
 
   .period-title {
     font-size: 15px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   /* 2. Donut Card */
   .donut-card {
     display: flex;
     justify-content: center;
-    padding: 12px 8px;
+    padding: 14px 10px;
+    border-radius: 22px;
   }
 
   /* 3. Insights Box */
   .insights-box {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    background-color: var(--cat-masuk-fill);
-    border: 1.5px solid var(--cat-masuk-border);
-    border-radius: 16px;
-    padding: 10px 14px;
+    gap: 8px;
+    background: rgba(59, 154, 184, 0.08);
+    border: 1px solid rgba(59, 154, 184, 0.22);
+    border-radius: 18px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }
 
   .insight-row {
@@ -471,27 +496,30 @@
   }
 
   .insight-sparkle {
-    color: #E2C172;
+    color: var(--aether);
     font-size: 14px;
+    text-shadow: 0 0 8px rgba(59, 154, 184, 0.25);
   }
 
   .insight-text {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--ink);
+    font-weight: 600;
+    color: var(--komorebi);
+    line-height: 1.45;
   }
 
   /* 4. Category Breakdown List */
   .breakdown-section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .section-title {
+    font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     padding-left: 2px;
     margin: 0;
   }
@@ -514,11 +542,12 @@
   }
 
   .cat-row-card.zero-nominal {
-    opacity: 0.55;
+    opacity: 0.45;
   }
 
   .cat-row-card.selected-row {
-    border-color: var(--accent);
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
     transform: scale(1.01);
   }
 
@@ -547,7 +576,7 @@
   .cat-name {
     font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .selisih-label {
@@ -556,15 +585,15 @@
   }
 
   .selisih-label.hemat {
-    color: #43702A;
+    color: var(--tunas);
   }
 
   .selisih-label.lewat {
-    color: var(--bad);
+    color: var(--api);
   }
 
   .selisih-label.pas {
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .cat-figures {
@@ -576,19 +605,20 @@
   .cat-amount {
     font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
+    letter-spacing: -0.01em;
   }
 
   .cat-pct {
     font-size: 12px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .cat-bar-track {
     width: 100%;
     height: 8px;
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
   }
@@ -596,13 +626,12 @@
   .cat-bar-fill {
     height: 100%;
     border-radius: 999px;
-    transition: width 300ms ease-out;
   }
 
   /* Unfolded transactions */
   .unfolded-txs-container {
-    background-color: var(--card);
-    border: 1.5px solid var(--line);
+    background: rgba(8, 14, 22, 0.88);
+    border: 1px solid var(--edge-soft);
     border-top: none;
     border-bottom-left-radius: 16px;
     border-bottom-right-radius: 16px;
@@ -616,7 +645,7 @@
   .unfolded-header {
     font-size: 11px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .unfolded-items {
@@ -630,23 +659,26 @@
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    padding: 4px 6px;
-    border-radius: 8px;
-    background-color: var(--bg);
+    padding: 6px 10px;
+    border-radius: 10px;
+    background-color: var(--glass-1);
+    border: 1px solid transparent;
     cursor: pointer;
+    transition: all 120ms ease;
   }
 
-  .unfolded-item:active {
-    background-color: #EADFCB;
+  .unfolded-item:hover, .unfolded-item:active {
+    background-color: var(--glass-2);
+    border-color: var(--edge-soft);
   }
 
   .tx-note {
-    color: var(--ink);
+    color: var(--komorebi);
     font-weight: 500;
   }
 
   .tx-val {
-    color: var(--ink);
+    color: var(--komorebi);
     font-weight: 700;
   }
 
@@ -654,26 +686,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border: none;
-    padding: 6px 12px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    padding: 6px 14px;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--aether);
     cursor: pointer;
     border-radius: 999px;
     margin-top: 4px;
     align-self: center;
-    transition: background-color 150ms ease;
+    transition: all 120ms ease;
   }
 
   .btn-see-all:hover {
-    background-color: rgba(229, 154, 106, 0.12);
+    background: var(--glass-2);
+    border-color: var(--edge-bright);
   }
 
   .btn-see-all:active {
-    background-color: rgba(229, 154, 106, 0.22);
+    transform: scale(0.96);
   }
 
   /* 5. Daily Spending Bars */
@@ -693,12 +726,13 @@
 
   .average-hint {
     font-size: 11px;
-    color: var(--mute);
+    color: var(--kabut);
     font-weight: 500;
   }
 
   .daily-bars-card {
-    padding: 18px 12px 12px;
+    padding: 20px 14px 14px;
+    border-radius: 22px;
   }
 
   .bars-container {
@@ -714,10 +748,10 @@
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1.5px dashed var(--mute);
+    border-top: 1.5px dashed var(--bara);
     z-index: 1;
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   .bar-column {
@@ -735,7 +769,7 @@
   }
 
   .bar-column.future {
-    opacity: 0.3;
+    opacity: 0.25;
   }
 
   .bar-pillar-wrap {
@@ -743,25 +777,26 @@
     height: calc(100% - 24px);
     display: flex;
     align-items: flex-end;
-    background-color: var(--bg);
+    background-color: rgba(255, 255, 255, 0.06);
     border-radius: 999px;
   }
 
   .bar-pillar {
     width: 100%;
-    background-color: var(--accent);
+    background: linear-gradient(180deg, var(--aether) 0%, rgba(59, 154, 184, 0.5) 100%);
+    box-shadow: 0 0 8px rgba(59, 154, 184, 0.15);
     border-radius: 999px;
-    transition: height 350ms ease-out;
   }
 
   .bar-pillar.over {
-    background-color: var(--bad);
+    background: linear-gradient(180deg, var(--api) 0%, #991B1B 100%);
+    box-shadow: var(--glow-api);
   }
 
   .bar-label {
     font-size: 11px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     line-height: 1;
   }
 
@@ -770,14 +805,16 @@
     bottom: calc(100% + 4px);
     left: 50%;
     transform: translateX(-50%);
-    background-color: #382C24;
-    color: #FFFDF7;
+    background: rgba(8, 14, 22, 0.95);
+    border: 1px solid var(--edge-bright);
+    color: var(--komorebi);
+    font-family: var(--font-display);
     font-size: 11px;
     font-weight: 700;
-    padding: 3px 8px;
+    padding: 4px 8px;
     border-radius: 8px;
     white-space: nowrap;
     z-index: 10;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   }
 </style>

@@ -168,6 +168,11 @@
 </svelte:head>
 
 <div class="pengaturan-page">
+  <!-- Page Header -->
+  <header class="page-header">
+    <h1 class="page-title">Pengaturan</h1>
+  </header>
+
   {#if $skippedRowsCount > 0}
     <div class="skipped-rows-pill" role="alert">
       <span>⚠️ {$skippedRowsCount} baris diabaikan</span>
@@ -180,7 +185,7 @@
       <div class="uj-top-row">
         <div>
           <span class="uj-label">Uang jajan mingguan</span>
-          <div class="uj-amount tabular-nums">{formatRp(uangJajan)}</div>
+          <div class="uj-amount font-num tabular-nums">{formatRp(uangJajan)}</div>
         </div>
         <Button
           variant="secondary"
@@ -228,7 +233,7 @@
         {#each keluarCategories as cat (cat.id)}
           <button
             type="button"
-            class="cat-row"
+            class="cat-row interactive-tap"
             onclick={() => openEditCategory(cat)}
             aria-label="Ubah kategori {cat.nama}"
           >
@@ -237,7 +242,7 @@
               <span class="cat-name">{cat.nama}</span>
             </div>
             <div class="cat-right">
-              <span class="cat-limit tabular-nums">{formatRp(cat.limit_mingguan)}</span>
+              <span class="cat-limit tipe-keluar tabular-nums">{formatRp(cat.limit_mingguan)}</span>
               <span class="chevron" aria-hidden="true">›</span>
             </div>
           </button>
@@ -252,7 +257,7 @@
         {#each tabungCategories as cat (cat.id)}
           <button
             type="button"
-            class="cat-row"
+            class="cat-row interactive-tap"
             onclick={() => openEditCategory(cat)}
             aria-label="Ubah kategori {cat.nama}"
           >
@@ -261,7 +266,7 @@
               <span class="cat-name">{cat.nama}</span>
             </div>
             <div class="cat-right">
-              <span class="cat-limit tabular-nums">{formatRp(cat.limit_mingguan)}</span>
+              <span class="cat-limit tipe-tabung tabular-nums">{formatRp(cat.limit_mingguan)}</span>
               <span class="chevron" aria-hidden="true">›</span>
             </div>
           </button>
@@ -276,7 +281,7 @@
         {#each masukCategories as cat (cat.id)}
           <button
             type="button"
-            class="cat-row"
+            class="cat-row interactive-tap"
             onclick={() => openEditCategory(cat)}
             aria-label="Ubah kategori {cat.nama}"
           >
@@ -285,7 +290,7 @@
               <span class="cat-name">{cat.nama}</span>
             </div>
             <div class="cat-right">
-              <span class="cat-limit tabular-nums">{formatRp(cat.limit_mingguan)}</span>
+              <span class="cat-limit tipe-masuk tabular-nums">{formatRp(cat.limit_mingguan)}</span>
               <span class="chevron" aria-hidden="true">›</span>
             </div>
           </button>
@@ -477,21 +482,41 @@
   .pengaturan-page {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     padding-bottom: 24px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Page Header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 0 4px;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--komorebi);
+    letter-spacing: -0.02em;
+    margin: 0;
   }
 
   .skipped-rows-pill {
-    background-color: var(--cat-jajanin-fill, #FFF4E5);
-    border: 1.5px solid var(--warn);
-    border-radius: 12px;
-    padding: 8px 12px;
+    background-color: rgba(217, 119, 6, 0.10);
+    border: 1px solid var(--bara);
+    border-radius: 14px;
+    padding: 8px 14px;
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--bara);
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: var(--glow-bara);
   }
 
   /* Uang Jajan Card */
@@ -510,20 +535,21 @@
   .uj-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .uj-amount {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 800;
-    color: var(--ink);
+    color: var(--komorebi);
     margin-top: 2px;
+    letter-spacing: -0.02em;
   }
 
   .alloc-bar-track {
     width: 100%;
     height: 10px;
-    background-color: var(--line);
+    background-color: rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
   }
@@ -531,19 +557,22 @@
   .alloc-bar-fill {
     height: 100%;
     border-radius: 999px;
-    transition: width 240ms ease-out, background-color 240ms ease-out;
+    transition: background-color 240ms ease-out;
   }
 
   .alloc-bar-fill.status-equal {
-    background-color: var(--good);
+    background-color: var(--tunas);
+    box-shadow: var(--glow-tunas);
   }
 
   .alloc-bar-fill.status-less {
-    background-color: var(--accent);
+    background-color: var(--bara);
+    box-shadow: var(--glow-bara);
   }
 
   .alloc-bar-fill.status-more {
-    background-color: var(--bad);
+    background-color: var(--api);
+    box-shadow: var(--glow-api);
   }
 
   .alloc-status-row {
@@ -557,15 +586,15 @@
   }
 
   .alloc-text.status-equal {
-    color: #4C7A39;
+    color: var(--tunas);
   }
 
   .alloc-text.status-less {
-    color: var(--mute);
+    color: var(--bara);
   }
 
   .alloc-text.status-more {
-    color: var(--bad);
+    color: var(--api);
   }
 
   /* Categories Section */
@@ -582,9 +611,10 @@
   }
 
   .cat-group-title {
-    font-size: 13px;
+    font-family: var(--font-display);
+    font-size: 12px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding-left: 4px;
@@ -594,10 +624,9 @@
   .cat-list {
     display: flex;
     flex-direction: column;
-    background-color: var(--card);
-    border-radius: var(--radius-card, 22px);
-    border: 2px solid var(--line);
-    border-bottom: 4px solid #D6C8B2;
+    background: var(--glass-1);
+    border-radius: 20px;
+    border: 1px solid var(--edge-soft);
     overflow: hidden;
   }
 
@@ -608,7 +637,7 @@
     padding: 12px 14px;
     border: none;
     background: transparent;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--edge-soft);
     cursor: pointer;
     font-family: inherit;
     text-align: left;
@@ -621,8 +650,8 @@
     border-bottom: none;
   }
 
-  .cat-row:active {
-    background-color: #F8F0E0;
+  .cat-row:hover, .cat-row:active {
+    background-color: var(--glass-2);
   }
 
   .cat-left {
@@ -639,39 +668,15 @@
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 1.5px solid;
+    border: 1.5px solid var(--edge-soft);
+    background: var(--glass-2);
     flex-shrink: 0;
-  }
-
-  .cat-badge.var-jajan {
-    background-color: var(--cat-jajan-fill);
-    border-color: var(--cat-jajan-border);
-  }
-  .cat-badge.var-pulsa {
-    background-color: var(--cat-pulsa-fill);
-    border-color: var(--cat-pulsa-border);
-  }
-  .cat-badge.var-bensin {
-    background-color: var(--cat-bensin-fill);
-    border-color: var(--cat-bensin-border);
-  }
-  .cat-badge.var-jajanin {
-    background-color: var(--cat-jajanin-fill);
-    border-color: var(--cat-jajanin-border);
-  }
-  .cat-badge.var-nabung {
-    background-color: var(--cat-nabung-fill);
-    border-color: var(--cat-nabung-border);
-  }
-  .cat-badge.var-masuk {
-    background-color: var(--cat-masuk-fill);
-    border-color: var(--cat-masuk-border);
   }
 
   .cat-name {
     font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .cat-right {
@@ -681,14 +686,27 @@
   }
 
   .cat-limit {
-    font-size: 14px;
+    font-family: var(--font-display);
+    font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
+  }
+
+  .cat-limit.tipe-keluar {
+    color: var(--api);
+  }
+
+  .cat-limit.tipe-tabung {
+    color: var(--bara);
+  }
+
+  .cat-limit.tipe-masuk {
+    color: var(--tunas);
   }
 
   .chevron {
     font-size: 18px;
-    color: var(--mute);
+    color: var(--kabut);
     font-weight: 700;
   }
 
@@ -704,9 +722,10 @@
   }
 
   .section-title {
-    font-size: 13px;
+    font-family: var(--font-display);
+    font-size: 12px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding-left: 4px;
@@ -724,7 +743,7 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 10px;
-    border-bottom: 1.5px dashed var(--line);
+    border-bottom: 1px dashed var(--edge-soft);
   }
 
   .setting-item:last-child {
@@ -741,23 +760,29 @@
   .setting-label {
     font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .setting-subnote {
     font-size: 12px;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .select-control {
-    padding: 6px 10px;
-    border-radius: var(--radius-btn, 16px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
-    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--edge-soft);
+    background-color: var(--glass-2);
+    color: var(--komorebi);
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
+  }
+
+  .select-control:focus {
+    outline: none;
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
   }
 
   .setting-btn-link {
@@ -766,12 +791,16 @@
     gap: 6px;
     background: transparent;
     border: none;
-    color: var(--ink);
+    color: var(--aether);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
     padding: 4px 0;
+  }
+
+  .setting-btn-link:hover {
+    color: var(--komorebi);
   }
 
   /* Quick Edit Modal / Sheet Forms */
@@ -790,7 +819,7 @@
   label {
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .input-with-prefix {
@@ -802,9 +831,9 @@
   .input-with-prefix .prefix {
     position: absolute;
     left: 14px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     pointer-events: none;
   }
 
@@ -812,24 +841,28 @@
     width: 100%;
     min-height: 44px;
     padding: 10px 14px 10px 42px;
-    border-radius: var(--radius-btn, 16px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
+    border-radius: 14px;
+    border: 1px solid var(--edge-soft);
+    background-color: var(--glass-1);
+    color: var(--komorebi);
+    font-family: var(--font-display);
     font-size: 16px;
     box-sizing: border-box;
+    transition: all 120ms ease;
   }
 
   .input-with-prefix input:focus {
-    border-color: var(--accent);
-    background-color: #FFFDF7;
+    border-color: var(--aether);
+    background-color: var(--glass-2);
     outline: none;
+    box-shadow: var(--glow-aether);
   }
 
   .input-preview {
+    font-family: var(--font-display);
     font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .modal-actions {

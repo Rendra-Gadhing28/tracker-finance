@@ -1,10 +1,18 @@
 <script>
   import '../app.css';
+  import '@fontsource-variable/unbounded';
+  import '@fontsource-variable/plus-jakarta-sans';
+  import '@fontsource-variable/jetbrains-mono';
   import { setContext, onMount } from 'svelte';
   import { page } from '$app/state';
+  import { onNavigate } from '$app/navigation';
   import SyncBadge from '$lib/components/SyncBadge.svelte';
   import TransactionSheet from '$lib/components/TransactionSheet.svelte';
   import Snackbar from '$lib/components/Snackbar.svelte';
+  import BerandaPage from './+page.svelte';
+  import StatistikPage from './statistik/+page.svelte';
+  import TabunganPage from './tabungan/+page.svelte';
+  import PengaturanPage from './pengaturan/+page.svelte';
   import {
     initData,
     budgets,
@@ -21,9 +29,45 @@
 
   /**
    * @typedef {Object} Props
-   * @property {import('svelte').Snippet} children
+   * @property {import('svelte').Snippet} [children]
    */
   let { children } = $props();
+
+  const MAIN_TABS = [
+    { index: 0, path: '/', id: 'beranda', label: 'Beranda' },
+    { index: 1, path: '/statistik', id: 'statistik', label: 'Statistik' },
+    { index: 2, path: '/tabungan', id: 'tabungan', label: 'Tabungan' },
+    { index: 3, path: '/pengaturan', id: 'pengaturan', label: 'Atur' }
+  ];
+
+  function normalizePath(pathname) {
+    if (!pathname) return '/';
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+      return pathname.slice(0, -1);
+    }
+    return pathname;
+  }
+
+  function isMainTab(pathname) {
+    const norm = normalizePath(pathname);
+    return MAIN_TABS.some((tab) => tab.path === norm);
+  }
+
+  function getTabByPath(pathname) {
+    const norm = normalizePath(pathname);
+    return MAIN_TABS.find((tab) => tab.path === norm) || null;
+  }
+
+  // Carousel & Navigation state
+  let carouselTrackEl = $state(null);
+  let activeTabIndex = $state(0);
+  let isProgrammaticScroll = false;
+  let scrollTimeout = null;
+  let scrollRafId = null;
+  let lastInitializedPath = $state('');
+
+  const currentPath = $derived(normalizePath(page.url.pathname));
+  const isMainTabRoute = $derived(isMainTab(currentPath));
 
   // Transaction Sheet state
   let isTxSheetOpen = $state(false);
@@ -38,14 +82,184 @@
   let snackbarMessage = $state('');
   let snackbarUndoFn = $state(null);
 
+  // View transitions for smooth page switching (sub-routes only; main tabs use swipe carousel)
+  onNavigate((navigation) => {
+    if (!document.startViewTransition) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (isMainTab(navigation.from?.url?.pathname) && isMainTab(navigation.to?.url?.pathname)) return;
+
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
+
+  function scrollToTab(index, behavior = 'smooth') {
+    if (!carouselTrackEl) return;
+    const clampedIndex = Math.min(MAIN_TABS.length - 1, Math.max(0, index));
+    activeTabIndex = clampedIndex;
+    const width = carouselTrackEl.clientWidth || 0;
+    if (width > 0) {
+      if (behavior === 'smooth') {
+        isProgrammaticScroll = true;
+      }
+      carouselTrackEl.scrollTo({
+        left: clampedIndex * width,
+        behavior
+      });
+    }
+    if (behavior === 'instant') {
+      const tab = MAIN_TABS[clampedIndex];
+      if (tab && typeof window !== 'undefined' && normalizePath(window.location.pathname) !== tab.path) {
+        history.replaceState(null, '', tab.path);
+      }
+    }
+  }
+
+  function syncUrlAfterScroll() {
+    if (!carouselTrackEl) return;
+    const width = carouselTrackEl.clientWidth || 0;
+    if (width <= 0) return;
+    const finalIndex = Math.min(MAIN_TABS.length - 1, Math.max(0, Math.round(carouselTrackEl.scrollLeft / width)));
+    activeTabIndex = finalIndex;
+    const targetTab = MAIN_TABS[finalIndex];
+    if (targetTab && typeof window !== 'undefined') {
+      const currentWindowPath = normalizePath(window.location.pathname);
+      if (currentWindowPath !== targetTab.path) {
+        history.replaceState(null, '', targetTab.path);
+      }
+    }
+    isProgrammaticScroll = false;
+  }
+
+  function handleCarouselScroll() {
+    if (!carouselTrackEl) return;
+    if (scrollRafId) cancelAnimationFrame(scrollRafId);
+    scrollRafId = requestAnimationFrame(() => {
+      if (!carouselTrackEl) return;
+      const width = carouselTrackEl.clientWidth || 0;
+      if (width > 0) {
+        const liveIndex = Math.min(MAIN_TABS.length - 1, Math.max(0, Math.round(carouselTrackEl.scrollLeft / width)));
+        if (activeTabIndex !== liveIndex) {
+          activeTabIndex = liveIndex;
+        }
+      }
+    });
+
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      syncUrlAfterScroll();
+    }, 120);
+  }
+
+  function handleCarouselScrollEnd() {
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    syncUrlAfterScroll();
+  }
+
+  $effect(() => {
+    if (isMainTabRoute && carouselTrackEl) {
+      const navPath = currentPath;
+      if (lastInitializedPath !== navPath) {
+        lastInitializedPath = navPath;
+        const targetTab = getTabByPath(navPath) || MAIN_TABS[0];
+        activeTabIndex = targetTab.index;
+        if (targetTab.index > 0) {
+          carouselTrackEl.scrollTo({
+            left: targetTab.index * carouselTrackEl.clientWidth,
+            behavior: 'instant'
+          });
+          requestAnimationFrame(() => {
+            if (carouselTrackEl) {
+              carouselTrackEl.scrollTo({
+                left: targetTab.index * carouselTrackEl.clientWidth,
+                behavior: 'instant'
+              });
+            }
+          });
+        }
+      }
+    } else if (!isMainTabRoute) {
+      lastInitializedPath = '';
+    }
+  });
+
   onMount(() => {
     let cleanUp = null;
+    let lenisInstance = null;
+    let rafId = null;
+
     initData().then((res) => {
       cleanUp = res;
     });
 
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const norm = normalizePath(window.location.pathname);
+      const targetTab = getTabByPath(norm);
+      if (targetTab && carouselTrackEl) {
+        scrollToTab(targetTab.index, 'smooth');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    const handleWindowResize = () => {
+      if (carouselTrackEl && isMainTabRoute) {
+        const width = carouselTrackEl.clientWidth || 0;
+        if (width > 0 && !isProgrammaticScroll) {
+          carouselTrackEl.scrollTo({
+            left: activeTabIndex * width,
+            behavior: 'instant'
+          });
+        }
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
+
+    // Capture coordinates of clicked navigation links for circular reveal origin
+    const handlePointerDown = (e) => {
+      const link = e.target.closest('a[href]');
+      if (link) {
+        document.documentElement.style.setProperty('--nav-x', `${e.clientX}px`);
+        document.documentElement.style.setProperty('--nav-y', `${e.clientY}px`);
+      }
+    };
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+
+    // Conditional Lenis smooth scrolling (desktop pointer devices only; 0 lag on mobile touch)
+    const isPointerFine = window.matchMedia('(pointer: fine)').matches;
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (isPointerFine && !prefersReduced) {
+      import('lenis').then(({ default: Lenis }) => {
+        lenisInstance = new Lenis({
+          duration: 1.4,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          orientation: 'vertical',
+          smoothWheel: true,
+          wheelMultiplier: 0.9,
+          touchMultiplier: 0
+        });
+
+        function raf(time) {
+          lenisInstance?.raf(time);
+          rafId = requestAnimationFrame(raf);
+        }
+        rafId = requestAnimationFrame(raf);
+      });
+    }
+
     return () => {
       cleanUp?.destroy?.();
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('resize', handleWindowResize);
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      if (rafId) cancelAnimationFrame(rafId);
+      lenisInstance?.destroy();
     };
   });
 
@@ -170,17 +384,47 @@
   }
 
   const navItems = [
-    { href: '/', label: 'Beranda', icon: '🏠' },
-    { href: '/statistik', label: 'Statistik', icon: '📊' },
-    { action: 'tambah', label: 'Tambah', icon: '＋' },
-    { href: '/tabungan', label: 'Tabungan', icon: '🐷' },
-    { href: '/pengaturan', label: 'Atur', icon: '⚙️' }
+    { href: '/', label: 'Beranda', id: 'beranda' },
+    { href: '/statistik', label: 'Statistik', id: 'statistik' },
+    { action: 'tambah', label: 'Catat', id: 'catat' },
+    { href: '/tabungan', label: 'Tabungan', id: 'tabungan' },
+    { href: '/pengaturan', label: 'Atur', id: 'pengaturan' }
   ];
+
+  const tabIndexMap = {
+    beranda: 0,
+    statistik: 1,
+    tabungan: 2,
+    pengaturan: 3
+  };
 
   function isActive(href) {
     if (!href) return false;
-    if (href === '/') return page.url.pathname === '/';
-    return page.url.pathname.startsWith(href);
+    if (href === '/') return currentPath === '/';
+    return currentPath.startsWith(href);
+  }
+
+  function isDockActive(item) {
+    if (item.action === 'tambah') return false;
+    if (isMainTabRoute) {
+      return tabIndexMap[item.id] === activeTabIndex;
+    }
+    return isActive(item.href);
+  }
+
+  function handleDockTabClick(e, item) {
+    if (isMainTabRoute && tabIndexMap[item.id] !== undefined) {
+      e.preventDefault();
+      const targetIndex = tabIndexMap[item.id];
+      if (activeTabIndex === targetIndex && carouselTrackEl) {
+        const panels = carouselTrackEl.querySelectorAll('.tab-slide-panel');
+        if (panels[targetIndex]) {
+          panels[targetIndex].scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        scrollToTab(targetIndex, 'smooth');
+      }
+    }
   }
 
   const syncStatus = $derived.by(() => {
@@ -191,7 +435,7 @@
 
   const syncLabel = $derived.by(() => {
     if ($sync.status === 'offline') return 'Offline';
-    if ($sync.pendingCount > 0) return `${$sync.pendingCount} menunggu terkirim`;
+    if ($sync.pendingCount > 0) return `${$sync.pendingCount} antre`;
     return 'Tersinkron';
   });
 </script>
@@ -211,35 +455,92 @@
       </div>
     </header>
 
-    <!-- Main Page Content -->
-    <main class="app-content">
-      {@render children?.()}
-    </main>
+    {#if isMainTabRoute}
+      <!-- 1:1 Realtime Swipe Carousel Track across 4 Main Tabs -->
+      <main
+        bind:this={carouselTrackEl}
+        class="tab-carousel-track"
+        onscroll={handleCarouselScroll}
+        onscrollend={handleCarouselScrollEnd}
+        data-lenis-prevent
+      >
+        <div class="tab-slide-panel" data-tab-index="0" data-tab-id="beranda" data-lenis-prevent>
+          <BerandaPage />
+        </div>
+        <div class="tab-slide-panel" data-tab-index="1" data-tab-id="statistik" data-lenis-prevent>
+          <StatistikPage />
+        </div>
+        <div class="tab-slide-panel" data-tab-index="2" data-tab-id="tabungan" data-lenis-prevent>
+          <TabunganPage />
+        </div>
+        <div class="tab-slide-panel" data-tab-index="3" data-tab-id="pengaturan" data-lenis-prevent>
+          <PengaturanPage />
+        </div>
+      </main>
+    {:else}
+      <!-- Standalone Sub-routes Content (Detail pages) -->
+      <main class="app-content standalone-page" data-lenis-prevent>
+        {@render children?.()}
+      </main>
+    {/if}
 
-    <!-- Bottom Tab Bar -->
-    <nav class="bottom-nav" aria-label="Navigasi Utama">
-      <div class="bottom-nav-inner">
+    <!-- Floating Bottom Dock Nav -->
+    <nav class="bottom-dock" aria-label="Navigasi Utama">
+      <div class="dock-inner">
         {#each navItems as item}
           {#if item.action === 'tambah'}
-            <div class="nav-item-center-wrapper">
+            <div class="dock-center-wrapper">
               <button
                 type="button"
-                class="nav-btn-tambah"
+                class="dock-btn-catat interactive-tap"
                 onclick={() => openCreate(null)}
-                aria-label="Tambah Transaksi"
+                aria-label="Catat Transaksi"
               >
-                <span class="tambah-icon" aria-hidden="true">＋</span>
+                <span class="catat-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </span>
               </button>
-              <span class="tambah-label">Tambah</span>
             </div>
           {:else}
             <a
               href={item.href}
-              class="nav-tab {isActive(item.href) ? 'active' : ''}"
-              aria-current={isActive(item.href) ? 'page' : undefined}
+              class="dock-tab interactive-tap {isDockActive(item) ? 'active' : ''}"
+              aria-current={isDockActive(item) ? 'page' : undefined}
+              onclick={(e) => handleDockTabClick(e, item)}
             >
-              <span class="nav-tab-icon">{item.icon}</span>
-              <span class="nav-tab-label">{item.label}</span>
+              <span class="dock-tab-icon">
+                {#if item.id === 'beranda'}
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                {:else if item.id === 'statistik'}
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                    <line x1="2" y1="20" x2="22" y2="20" />
+                  </svg>
+                {:else if item.id === 'tabungan'}
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                {:else if item.id === 'pengaturan'}
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                {/if}
+              </span>
+              <span class="dock-tab-label">{item.label}</span>
+              {#if isDockActive(item)}
+                <span class="active-dot" aria-hidden="true"></span>
+              {/if}
             </a>
           {/if}
         {/each}
@@ -276,32 +577,39 @@
     display: flex;
     justify-content: center;
     align-items: stretch;
-    min-height: 100dvh;
-    background-color: #ECE2D0;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--bg-sky);
+    background-attachment: fixed;
+    overflow: hidden;
   }
 
   .mobile-shell {
     position: relative;
     width: 100%;
-    max-width: 480px;
-    min-height: 100dvh;
-    background-color: var(--bg);
+    max-width: 440px;
+    height: 100vh;
+    height: 100dvh;
+    background: transparent;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 24px rgba(74, 59, 50, 0.08);
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   /* Header */
   .app-header {
-    position: sticky;
-    top: 0;
+    flex: 0 0 auto;
+    position: relative;
     z-index: 50;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    background-color: var(--bg);
-    border-bottom: 1.5px solid var(--line);
+    padding: 12px 16px;
+    background: rgba(7, 12, 20, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--edge-soft);
     min-height: 56px;
     box-sizing: border-box;
   }
@@ -317,130 +625,203 @@
   }
 
   .header-title {
-    font-size: 18px;
+    font-family: var(--font-display);
+    font-size: 15px;
     font-weight: 700;
-    color: var(--ink);
+    letter-spacing: -0.01em;
+    color: var(--komorebi);
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
   }
 
   .cat-paw {
     font-size: 16px;
   }
 
-  /* Main content area */
-  .app-content {
+  /* Carousel Track */
+  .tab-carousel-track {
     flex: 1;
-    padding: 14px;
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-    box-sizing: border-box;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x pan-y;
   }
 
-  /* Bottom Navigation */
-  .bottom-nav {
+  .tab-carousel-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Slide Panels */
+  .tab-slide-panel {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    box-sizing: border-box;
+    padding: 16px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 12px));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .tab-slide-panel::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Standalone Sub-routes Content */
+  .app-content.standalone-page {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding: 16px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 12px));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  .app-content.standalone-page::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Floating Bottom Dock Navigation */
+  .bottom-dock {
     position: fixed;
-    bottom: 0;
+    bottom: calc(12px + env(safe-area-inset-bottom, 12px));
     left: 50%;
     transform: translateX(-50%);
-    width: 100%;
-    max-width: 480px;
-    background-color: var(--card);
-    border-top: 2px solid var(--line);
+    width: calc(100% - 24px);
+    max-width: 416px;
+    height: 64px;
+    background: rgba(9, 14, 22, 0.88);
+    border: 1px solid var(--edge-soft);
+    border-radius: 32px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     z-index: 60;
     box-sizing: border-box;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding: 0 8px;
   }
 
-  .bottom-nav-inner {
+  .dock-inner {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-around;
-    height: 64px;
-    padding: 0 4px;
+    height: 100%;
     position: relative;
   }
 
-  .nav-tab {
+  .dock-tab {
     flex: 1;
-    min-height: 48px;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    color: var(--mute);
-    gap: 2px;
-    transition: color 150ms ease-out, transform 100ms ease-out;
-    padding: 6px 0;
+    color: var(--kabut);
+    gap: 3px;
+    transition: color 150ms ease-out, transform 120ms ease-out;
+    padding: 4px 0;
+    position: relative;
+    border-radius: 20px;
   }
 
-  .nav-tab:active {
-    transform: scale(0.95);
+  .dock-tab:active {
+    transform: scale(0.92);
   }
 
-  .nav-tab.active {
-    color: var(--accent-pressed);
+  .dock-tab.active {
+    color: var(--aether);
+  }
+
+  .dock-tab.active .dock-tab-icon {
+    filter: drop-shadow(0 0 8px var(--aether));
+  }
+
+  .dock-tab.active .dock-tab-label {
     font-weight: 700;
+    color: var(--aether);
   }
 
-  .nav-tab-icon {
-    font-size: 20px;
-    line-height: 1;
+  .dock-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 150ms ease-out, filter 150ms ease-out;
   }
 
-  .nav-tab-label {
+  .dock-tab-label {
     font-size: 11px;
+    font-family: var(--font-ui);
     line-height: 1;
   }
 
-  /* Center Prominent Tambah Button */
-  .nav-item-center-wrapper {
+  .active-dot {
+    position: absolute;
+    bottom: 4px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--aether);
+    box-shadow: 0 0 6px var(--aether);
+  }
+
+  /* Center Prominent Tombol Catat */
+  .dock-center-wrapper {
     flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     position: relative;
-    padding-bottom: 4px;
+    height: 100%;
   }
 
-  .nav-btn-tambah {
+  .dock-btn-catat {
     position: absolute;
-    top: -20px;
-    width: 52px;
-    height: 52px;
+    top: -16px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
-    background-color: var(--accent);
-    color: #FFFDF7;
-    border: 2px solid var(--accent-pressed);
-    border-bottom: 4px solid var(--accent-pressed);
+    background: linear-gradient(135deg, var(--bara) 0%, #A15507 100%);
+    color: var(--on-bara);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--glow-bara), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     touch-action: manipulation;
     box-sizing: border-box;
-    transition: transform 120ms ease-out, border-bottom-width 120ms ease-out, background-color 120ms ease-out;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
   }
 
-  .nav-btn-tambah:active {
-    transform: translateY(3px);
-    border-bottom-width: 1px;
-    background-color: var(--accent-pressed);
+  .dock-btn-catat:active {
+    transform: translateY(2px) scale(0.94);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(217, 119, 6, 0.25);
   }
 
-  .tambah-icon {
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1;
-  }
-
-  .tambah-label {
-    font-size: 11px;
-    color: var(--mute);
-    margin-top: 36px;
-    line-height: 1;
+  .catat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 </style>

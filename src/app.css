@@ -1,52 +1,86 @@
-/* Neko Dompet Design System Tokens */
+/* Dark Aether Design System Tokens */
+@import '@fontsource-variable/unbounded';
+@import '@fontsource-variable/plus-jakarta-sans';
+@import '@fontsource-variable/jetbrains-mono';
+
 :root {
-  /* Core Palette */
-  --bg: #F8F0E0;
-  --card: #FFFDF7;
-  --ink: #4A3B32;
-  --mute: #8C7B6E;
-  --line: #EADFCB;
-  --accent: #E59A6A;
-  --accent-pressed: #C97C4E;
-  --sky: #BFE0E6;
-  --grass: #B5D6A0;
+  /* Core Dark Aether Palette */
+  --senja: #060B12;
+  --teal-malam: #08111A;
+  --kanopi: #050E0C;
+  --bg-sky: linear-gradient(180deg, var(--senja) 0%, var(--teal-malam) 45%, var(--kanopi) 100%);
+  --komorebi: #E2E8F0; /* primary text: soft pearl off-white */
+  --kabut: #94A3B8; /* secondary text: slate mist */
+  --lumut: #64748B; /* tertiary / telemetry text: muted slate */
+  --bara: #D97706; /* tabung / menabung: warm amber */
+  --on-bara: #1C1305;
+  --aether: #3B9AB8; /* sisa uang, dompet, calm deep aether */
+  --tunas: #38A169; /* pemasukan (masuk), safe/good status: muted emerald */
+  --api: #D14343; /* pengeluaran (keluar), overlimit, danger: muted crimson */
+  --glow-bara: 0 0 16px rgb(217 119 6 / 0.15);
+  --glow-aether: 0 0 16px rgb(59 154 184 / 0.16);
+  --glow-tunas: 0 0 16px rgb(56 161 105 / 0.14);
+  --glow-api: 0 0 16px rgb(209 67 67 / 0.16);
 
-  /* Status */
-  --good: #8DBF7A;
-  --warn: #E9B65A;
-  --bad: #D9776B;
-  --bad-pressed: #BA5B50;
+  /* Glass Surface Tokens - Clean neutral glass on obsidian */
+  --glass-1: rgba(255, 255, 255, 0.035);
+  --glass-2: rgba(255, 255, 255, 0.06);
+  --glass-3: rgba(255, 255, 255, 0.09);
+  --edge-soft: rgba(255, 255, 255, 0.08);
+  --edge-bright: rgba(255, 255, 255, 0.18);
+  --scrim: rgba(3, 7, 12, 0.75);
 
-  /* Category Pastel Fills & Darker Borders */
-  --cat-jajan-fill: #FBE0D3;
-  --cat-jajan-border: #F2B28C;
+  /* Typography Font Families */
+  --font-display: 'Unbounded Variable', sans-serif;
+  --font-ui: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', monospace;
+  --font-family: var(--font-ui);
 
-  --cat-pulsa-fill: #DCEEF7;
-  --cat-pulsa-border: #9CC5D9;
+  /* Backward Compatibility Mapping */
+  --bg: var(--senja);
+  --card: var(--glass-1);
+  --card-solid: #0A1118;
+  --ink: var(--komorebi);
+  --mute: var(--kabut);
+  --line: var(--edge-soft);
+  --accent: var(--bara);
+  --accent-pressed: #B45309;
+  --sky: var(--aether);
+  --grass: var(--tunas);
 
-  --cat-bensin-fill: #E4F2DA;
-  --cat-bensin-border: #9FC88A;
+  /* Status Tokens */
+  --good: var(--tunas);
+  --warn: var(--bara);
+  --bad: var(--api);
+  --bad-pressed: #991B1B;
 
-  --cat-jajanin-fill: #EBE0F5;
-  --cat-jajanin-border: #C9B0E0;
+  /* Category Translucent Fills & Borders */
+  --cat-jajan-fill: rgba(209, 67, 67, 0.10);
+  --cat-jajan-border: rgba(209, 67, 67, 0.28);
 
-  --cat-nabung-fill: #FBE1E7;
-  --cat-nabung-border: #F2B8C6;
+  --cat-pulsa-fill: rgba(209, 85, 67, 0.10);
+  --cat-pulsa-border: rgba(209, 85, 67, 0.28);
 
-  --cat-masuk-fill: #FBF0CF;
-  --cat-masuk-border: #F4D58D;
+  --cat-bensin-fill: rgba(209, 67, 67, 0.10);
+  --cat-bensin-border: rgba(209, 67, 67, 0.28);
 
-  /* Sticker Metrics */
+  --cat-jajanin-fill: rgba(180, 80, 110, 0.10);
+  --cat-jajanin-border: rgba(180, 80, 110, 0.28);
+
+  --cat-nabung-fill: rgba(217, 119, 6, 0.10);
+  --cat-nabung-border: rgba(217, 119, 6, 0.28);
+
+  --cat-masuk-fill: rgba(56, 161, 105, 0.10);
+  --cat-masuk-border: rgba(56, 161, 105, 0.28);
+
+  /* Component Metrics */
   --radius-card: 22px;
   --radius-btn: 16px;
   --radius-chip: 999px;
   --radius-sheet: 28px;
-  --border-card-bottom: 5px;
-  --border-btn-bottom: 4px;
+  --border-card-bottom: 3px;
+  --border-btn-bottom: 3px;
   --touch-min: 44px;
-
-  /* Typography */
-  --font-family: 'Zen Maru Gothic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Reset & Box Sizing */
@@ -57,10 +91,11 @@
 }
 
 html, body {
-  min-height: 100%;
-  background-color: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-family);
+  min-height: 100vh;
+  background: var(--bg-sky);
+  background-attachment: fixed;
+  color: var(--komorebi);
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -82,9 +117,37 @@ input, textarea, [contenteditable="true"] {
   font-variant-numeric: tabular-nums;
 }
 
+.font-num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glass Surface Utility Classes */
+.glass-core {
+  background: var(--glass-2);
+  border: 1px solid var(--edge-soft);
+  border-radius: 28px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-panel {
+  background: var(--glass-1);
+  border: 1px solid var(--edge-soft);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-row {
+  background: var(--glass-1);
+  border: 1px solid var(--edge-soft);
+  border-radius: 14px;
+}
+
 /* Focus Ring */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--aether);
   outline-offset: 2px;
 }
 
@@ -95,12 +158,113 @@ button, a, input, select, textarea, [role="button"] {
   color: inherit;
 }
 
-/* Reduced Motion */
+/* Micro-spring tactile feedback */
+.interactive-tap {
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.interactive-tap:active {
+  transform: scale(0.94);
+}
+
+/* Stagger entrance utility - cinematic smooth curve */
+.animate-stagger {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+  filter: blur(5px);
+  animation: staggerIn 1000ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 110ms);
+  will-change: transform, opacity, filter;
+}
+
+@keyframes staggerIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* View Transitions API: Circular Mask Reveal - slow & satisfying curve */
+::view-transition-old(root) {
+  animation: fadeScaleOut 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: circleReveal 1200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  mix-blend-mode: normal;
+}
+
+@keyframes fadeScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.75;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes circleReveal {
+  from {
+    clip-path: circle(0px at var(--nav-x, 50%) var(--nav-y, 90%));
+  }
+  to {
+    clip-path: circle(160vmax at var(--nav-x, 50%) var(--nav-y, 90%));
+  }
+}
+
+/* Lenis smooth scroll */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* Reduced Motion - Intentional accessible alternative preserving state changes and hierarchy */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Preserve gentle opacity and color transitions for state feedback while removing spatial motion */
+  button, a, input, select, textarea, [role="button"], .glass-panel, .glass-core, .glass-row {
+    transition-property: opacity, background-color, border-color, color, box-shadow !important;
+    transition-duration: 150ms !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+
+  .animate-stagger {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .interactive-tap {
+    transition: none !important;
+    transform: none !important;
   }
 }

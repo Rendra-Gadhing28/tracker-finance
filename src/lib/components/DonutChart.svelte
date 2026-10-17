@@ -224,7 +224,7 @@
         cy={cy}
         r={baseR}
         fill="none"
-        stroke="#D6C8B2"
+        stroke="var(--edge-soft)"
         stroke-width={baseThickness}
         stroke-dasharray="6 6"
         class="empty-donut-ring"
@@ -245,33 +245,37 @@
           {@const shiftX = isSelected ? Math.cos(rad) * 4 : 0}
           {@const shiftY = isSelected ? Math.sin(rad) * 4 : 0}
 
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <path
             d={pathD}
-            fill={slice.color?.border || slice.borderHex || slice.warnaHex || '#D5CBBB'}
-            stroke="var(--card)"
+            fill={slice.color?.border || slice.borderHex || slice.warnaHex || '#5ED6E6'}
+            stroke="rgba(7, 12, 20, 0.95)"
             stroke-width="1.5"
             stroke-linejoin="round"
+            role="button"
+            tabindex="0"
+            aria-label="{slice.label}: {slice.nominal} rupiah ({slice.percent}%)"
             class="donut-slice {isSelected ? 'blossomed' : ''} {isDimmed ? 'dimmed' : ''}"
             style="transform: translate({shiftX}px, {shiftY}px);"
             filter={isSelected ? 'url(#blossomShadow)' : undefined}
             onclick={() => handleSliceClick(slice)}
+            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSliceClick(slice)}
           />
         {/each}
       </g>
     {/if}
 
     <!-- CENTER HOLE (Interactive touch reset target) -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <circle
       cx={cx}
       cy={cy}
       r={baseR - baseThickness / 2 - 4}
       fill="transparent"
+      role="button"
+      tabindex={selectedSliceId ? 0 : -1}
+      aria-label="Kembalikan pilihan donat"
       class="center-hitbox"
       onclick={handleCenterClick}
+      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCenterClick()}
     />
 
     <!-- CENTER TEXT CONTENT (PRD 19.4) -->
@@ -348,6 +352,12 @@
                 transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
                 opacity 200ms ease-out;
     outline: none;
+  }
+
+  .donut-slice:focus-visible {
+    stroke: var(--aether);
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 8px var(--aether));
   }
 
   .donut-slice.dimmed {
@@ -440,6 +450,58 @@
     fill: var(--mute);
   }
 
+  @keyframes earTwitchLeft {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-8deg); }
+  }
+
+  @keyframes earTwitchRight {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(8deg); }
+  }
+
+  /* Center Typography */
+  .center-empty-text-1,
+  .center-empty-text-2,
+  .center-empty-text-3 {
+    font-size: 11px;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    fill: var(--kabut);
+  }
+
+  .center-total-amount {
+    font-size: 16px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    fill: var(--komorebi);
+  }
+
+  .center-mode-label {
+    font-size: 12px;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    fill: var(--aether);
+  }
+
+  .center-slice-icon {
+    font-size: 18px;
+  }
+
+  .center-slice-name {
+    font-size: 12px;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    fill: var(--komorebi);
+  }
+
+  .center-slice-nominal {
+    font-size: 11px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    fill: var(--aether);
+  }
+
   .sweep-mask-circle {
     animation: sweepMaskAnim 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
   }
@@ -458,14 +520,6 @@
     .cat-pupil,
     .sweep-mask-circle {
       transition: none !important;
-      animation: none !important;
-    }
-    .sweep-mask-circle {
-      stroke-dashoffset: 0 !important;
-    }
-    .twitch-left,
-    .twitch-right {
-      animation: none !important;
     }
   }
 </style>

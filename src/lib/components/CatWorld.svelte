@@ -213,7 +213,6 @@
   });
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="cat-world-container phase-{timePhase.phase} {effectiveMood} {activeReaction ? `reaction-${activeReaction}` : ''} {isSleeping ? 'is-sleeping' : ''}"
   style="
@@ -222,6 +221,7 @@
     --grass-color: {timePhase.grass};
   "
   onclick={handleInteraction}
+  onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleInteraction()}
   role="button"
   tabindex="0"
   aria-label="Kucing Neko Dompet. Mood: {effectiveMood}. Ketuk untuk berinteraksi."
@@ -523,11 +523,11 @@
     position: relative;
     width: 100%;
     height: 170px;
-    border-radius: var(--radius-card, 22px);
+    border-radius: 24px;
     overflow: hidden;
-    background: linear-gradient(180deg, var(--sky-top, #BFE0E6) 0%, var(--sky-bottom, #EAF4E4) 100%);
-    border: 2px solid var(--line);
-    border-bottom: var(--border-card-bottom, 5px) solid #91BE7D;
+    background: linear-gradient(180deg, var(--sky-top, #0C233F) 0%, var(--sky-bottom, #0D3430) 100%);
+    border: 1px solid var(--edge-soft);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 0 30px rgba(12, 31, 54, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     box-sizing: border-box;
     cursor: pointer;
     touch-action: manipulation;
@@ -756,21 +756,23 @@
     top: 12px;
     left: 14px;
     max-width: 210px;
-    background-color: var(--card);
-    border: 1.5px solid var(--line);
-    border-bottom: 3px solid #D6C8B2;
+    background: rgba(12, 31, 54, 0.92);
+    border: 1px solid var(--edge-bright);
     border-radius: 14px;
     padding: 7px 11px;
     z-index: 5;
     pointer-events: none;
-    box-shadow: 0 3px 8px rgba(74, 59, 50, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 12px rgba(94, 214, 230, 0.15);
   }
 
   .speech-text {
     font-size: 12px;
-    font-weight: 700;
-    color: var(--ink);
-    line-height: 1.3;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    color: var(--komorebi);
+    line-height: 1.35;
     display: block;
   }
 
@@ -780,7 +782,7 @@
     left: 24px;
     width: 10px;
     height: 6px;
-    background-color: var(--card);
+    background-color: rgba(12, 31, 54, 0.92);
     clip-path: polygon(0 0, 100% 0, 50% 100%);
   }
 
@@ -823,7 +825,7 @@
   .cat-group.anim-tabung,
   .cat-group.anim-pet,
   .cat-group.anim-tanpa_jajan {
-    animation: catBounce 0.4s ease-out 3;
+    animation: catBob 0.4s ease-out 3;
   }
 
   .cat-group.anim-masuk {
@@ -901,7 +903,7 @@
     100% { opacity: 0; transform: translateY(-20px); }
   }
 
-  @keyframes catBounce {
+  @keyframes catBob {
     0%, 100% { transform: translate(180px, 142px); }
     50% { transform: translate(180px, 134px); }
   }

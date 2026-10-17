@@ -46,16 +46,17 @@
   let catatan = $state('');
   let showCatatan = $state(false);
   let isSubmitting = $state(false);
+  let scrollContainerRef = $state(null);
 
-  // Available categories for selected type, sorted by urut
-  const filteredCategories = $derived(
+  // All available categories sorted by urut
+  const allCategories = $derived(
     (categories || [])
-      .filter((c) => c.tipe === tipe)
+      .slice()
       .sort((a, b) => (a.urut || 0) - (b.urut || 0))
   );
 
   const selectedCategory = $derived(
-    filteredCategories.find((c) => c.id === kategoriId) || filteredCategories[0] || null
+    allCategories.find((c) => c.id === kategoriId) || allCategories[0] || null
   );
 
   const numericNominal = $derived(parseRp(rawNominal));
@@ -75,11 +76,16 @@
   });
 
   function getLastUsedCategoryId(targetType) {
-    const matchingCats = (categories || []).filter((c) => c.tipe === targetType);
+    const normTarget = (targetType || '').trim().toLowerCase();
+    const matchingCats = (categories || []).filter(
+      (c) => (c.tipe || '').trim().toLowerCase() === normTarget
+    );
     if (matchingCats.length === 0) return '';
 
     // Check newest transaction in transactions matching targetType
-    const lastTxOfType = (transactions || []).find((t) => t.tipe === targetType);
+    const lastTxOfType = (transactions || []).find(
+      (t) => (t.tipe || '').trim().toLowerCase() === normTarget
+    );
     if (lastTxOfType && matchingCats.some((c) => c.id === lastTxOfType.kategori_id)) {
       return lastTxOfType.kategori_id;
     }
@@ -87,7 +93,7 @@
     // Fallback to localStorage
     if (typeof localStorage !== 'undefined') {
       try {
-        const stored = localStorage.getItem(`last_cat_${targetType}`);
+        const stored = localStorage.getItem(`last_cat_${normTarget}`);
         if (stored && matchingCats.some((c) => c.id === stored)) {
           return stored;
         }
@@ -98,6 +104,21 @@
 
     // Fallback to first matching category
     return matchingCats[0]?.id || '';
+  }
+
+  function scrollToSelectedChip() {
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => {
+        const el = scrollContainerRef?.querySelector('.cat-chip.selected');
+        el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      });
+    }
+  }
+
+  function handleWheel(event) {
+    if (event.deltaY !== 0) {
+      event.currentTarget.scrollLeft += event.deltaY;
+    }
   }
 
   // Unreached goals for Tabung chips (PRD 18.5)
@@ -182,12 +203,15 @@
           dateOption = 'custom';
           customDateVal = txDateStr;
         }
+        scrollToSelectedChip();
       } else {
         // Create mode
-        tipe = initialTx?.tipe || 'keluar';
         if (initialTx?.kategori_id) {
           kategoriId = initialTx.kategori_id;
+          const matchingCat = (categories || []).find((c) => c.id === kategoriId);
+          tipe = matchingCat?.tipe || initialTx?.tipe || 'keluar';
         } else {
+          tipe = initialTx?.tipe || 'keluar';
           kategoriId = getLastUsedCategoryId(tipe);
         }
 
@@ -212,21 +236,34 @@
           dateOption = 'today';
           customDateVal = todayISO;
         }
+        scrollToSelectedChip();
       }
     }
   });
 
-  // Ensure valid category when type changes
+  // Ensure valid category is selected when category list changes
   $effect(() => {
-    if (filteredCategories.length > 0) {
-      const exists = filteredCategories.some((c) => c.id === kategoriId);
+    if (allCategories.length > 0) {
+      const exists = allCategories.some((c) => c.id === kategoriId);
       if (!exists) {
-        kategoriId = getLastUsedCategoryId(tipe);
+        kategoriId = getLastUsedCategoryId(tipe) || allCategories[0].id;
       }
     } else {
       kategoriId = '';
     }
   });
+
+  function handleSelectCategory(cat, event) {
+    kategoriId = cat.id;
+    const catTipe = (cat.tipe || '').trim().toLowerCase();
+    if (catTipe && catTipe !== tipe) {
+      tipe = catTipe;
+      if (catTipe === 'tabung' && !goalId) {
+        goalId = getDefaultGoalId();
+      }
+    }
+    event?.currentTarget?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
 
   function handleTypeChange(newType) {
     tipe = newType;
@@ -234,6 +271,7 @@
     if (newType === 'tabung' && !goalId) {
       goalId = getDefaultGoalId();
     }
+    scrollToSelectedChip();
   }
 
   function handleNominalInput(event) {
@@ -355,56 +393,81 @@
 >
   <div class="tx-sheet-content">
     <!-- Type Selector -->
-    <div class="type-segmented-group" role="tablist">
+    <div class="type-segmented-group" role="tablist" aria-label="Tipe Transaksi">
       <button
         type="button"
-        class="type-tab {tipe === 'keluar' ? 'active' : ''}"
+        class="type-tab {tipe === 'keluar' ? 'active-keluar' : ''}"
         onclick={() => handleTypeChange('keluar')}
+        role="tab"
+        aria-selected={tipe === 'keluar'}
       >
-        💸 Keluar
+        <span>💸</span>
+        <span>Keluar</span>
       </button>
       <button
         type="button"
-        class="type-tab {tipe === 'masuk' ? 'active' : ''}"
+        class="type-tab {tipe === 'masuk' ? 'active-masuk' : ''}"
         onclick={() => handleTypeChange('masuk')}
+        role="tab"
+        aria-selected={tipe === 'masuk'}
       >
-        💰 Masuk
+        <span>💰</span>
+        <span>Masuk</span>
       </button>
       <button
         type="button"
-        class="type-tab {tipe === 'tabung' ? 'active' : ''}"
+        class="type-tab {tipe === 'tabung' ? 'active-tabung' : ''}"
         onclick={() => handleTypeChange('tabung')}
+        role="tab"
+        aria-selected={tipe === 'tabung'}
       >
-        🐷 Tabung
+        <span>🐷</span>
+        <span>Tabung</span>
       </button>
     </div>
 
     <!-- Category Chips (Horizontally Scrollable) -->
-    <div class="category-scroll-container">
-      {#if filteredCategories.length === 0}
-        <p class="empty-cats-text">Belum ada kategori untuk tipe ini.</p>
+    <div
+      class="category-scroll-container"
+      bind:this={scrollContainerRef}
+      onwheel={handleWheel}
+      role="radiogroup"
+      aria-label="Pilih kategori"
+    >
+      {#if allCategories.length === 0}
+        <p class="empty-cats-text">Belum ada kategori.</p>
       {:else}
-        {#each filteredCategories as cat}
+        {#each allCategories as cat}
+          {@const catLimit = Number(cat.limit_mingguan) || 0}
+          {@const catSpent = categorySpentMap[cat.id] || 0}
+          {@const isNearLimit = catLimit > 0 && catSpent >= catLimit * 0.85 && catSpent <= catLimit}
+          {@const isOverLimit = catLimit > 0 && catSpent > catLimit}
           <button
             type="button"
-            class="cat-chip {kategoriId === cat.id ? 'selected' : ''}"
-            style="--cat-fill: var(--cat-{cat.warna || cat.id}-fill, #FBE0D3); --cat-border: var(--cat-{cat.warna || cat.id}-border, #F2B28C);"
-            onclick={() => (kategoriId = cat.id)}
+            class="cat-chip {kategoriId === cat.id ? 'selected' : ''} type-{cat.tipe || 'keluar'}"
+            onclick={(e) => handleSelectCategory(cat, e)}
+            role="radio"
+            aria-checked={kategoriId === cat.id}
           >
             <span class="cat-chip-icon">{cat.ikon}</span>
             <span class="cat-chip-label">{cat.nama}</span>
+            {#if isOverLimit}
+              <span class="limit-dot over" title="Melebihi budget"></span>
+            {:else if isNearLimit}
+              <span class="limit-dot near" title="Mendekati limit"></span>
+            {/if}
           </button>
         {/each}
       {/if}
     </div>
 
     <!-- Large Nominal Input -->
-    <div class="nominal-input-box">
+    <div class="nominal-input-box state-{tipe}">
       <span class="currency-prefix">Rp</span>
       <input
         type="text"
         inputmode="numeric"
-        class="nominal-field tabular-nums"
+        class="nominal-field font-num tabular-nums"
         placeholder="0"
         value={rawNominal}
         oninput={handleNominalInput}
@@ -421,23 +484,29 @@
       {#if lastNominalForCategory > 0}
         <button
           type="button"
-          class="quick-pill last-used-pill"
+          class="quick-pill last-used-pill font-num tabular-nums"
           onclick={() => applyQuickAmount(lastNominalForCategory)}
         >
           ↺ {lastNominalForCategory.toLocaleString('id-ID')}
         </button>
       {/if}
-      <button type="button" class="quick-pill" onclick={() => applyQuickAmount(2000)}>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(2000)}>
         2.000
       </button>
-      <button type="button" class="quick-pill" onclick={() => applyQuickAmount(5000)}>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(5000)}>
         5.000
       </button>
-      <button type="button" class="quick-pill" onclick={() => applyQuickAmount(10000)}>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(10000)}>
         10.000
       </button>
-      <button type="button" class="quick-pill" onclick={() => applyQuickAmount(15000)}>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(15000)}>
         15.000
+      </button>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(20000)}>
+        20.000
+      </button>
+      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(50000)}>
+        50.000
       </button>
     </div>
 
@@ -529,11 +598,12 @@
         <input
           type="text"
           class="note-field"
+          aria-label="Catatan kecil"
           placeholder="Catatan kecil (mis. Es teh, bensin)"
           maxlength="60"
           bind:value={catatan}
         />
-        <span class="note-counter">{catatan.length}/60</span>
+        <span class="note-counter tabular-nums">{catatan.length}/60</span>
       </div>
     {/if}
 
@@ -559,6 +629,7 @@
           variant="primary"
           size="md"
           full
+          class="btn-submit-{tipe}"
           disabled={numericNominal <= 0 || !selectedCategory || isSubmitting}
           onclick={handleSubmit}
         >
@@ -569,6 +640,7 @@
           variant="primary"
           size="lg"
           full
+          class="btn-submit-{tipe}"
           disabled={numericNominal <= 0 || !selectedCategory || isSubmitting}
           onclick={handleSubmit}
         >
@@ -589,30 +661,53 @@
   /* Segmented Type Control */
   .type-segmented-group {
     display: flex;
-    background-color: var(--bg);
-    border: 1.5px solid var(--line);
-    border-radius: var(--radius-btn, 16px);
-    padding: 3px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 16px;
+    padding: 4px;
     gap: 4px;
   }
 
   .type-tab {
     flex: 1;
     min-height: 40px;
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     transition: all 150ms ease-out;
   }
 
-  .type-tab.active {
-    background-color: var(--card);
-    color: var(--ink);
-    box-shadow: 0 2px 6px rgba(74, 59, 50, 0.08);
+  .type-tab:hover {
+    color: var(--komorebi);
+  }
+
+  .type-tab.active-keluar {
+    background: rgba(255, 92, 92, 0.18);
+    border-color: var(--api);
+    color: var(--api);
+    box-shadow: var(--glow-api);
+  }
+
+  .type-tab.active-masuk {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: var(--tunas);
+    color: var(--tunas);
+    box-shadow: var(--glow-tunas);
+  }
+
+  .type-tab.active-tabung {
+    background: rgba(251, 191, 36, 0.18);
+    border-color: var(--bara);
+    color: var(--bara);
+    box-shadow: var(--glow-bara);
   }
 
   /* Category scroll */
@@ -622,7 +717,10 @@
     overflow-x: auto;
     padding-bottom: 4px;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
   }
 
   .category-scroll-container::-webkit-scrollbar {
@@ -631,12 +729,12 @@
 
   .cat-chip {
     flex-shrink: 0;
-    min-height: 40px;
+    min-height: 38px;
     padding: 6px 14px;
-    border-radius: var(--radius-chip, 999px);
-    border: 1.5px solid var(--line);
-    background-color: var(--card);
-    color: var(--ink);
+    border-radius: 999px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
     font-size: 13px;
     font-weight: 500;
     display: inline-flex;
@@ -646,24 +744,63 @@
     transition: all 120ms ease-out;
   }
 
+  .cat-chip:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
+  }
+
   .cat-chip.selected {
-    background-color: var(--cat-fill, #FBE0D3);
-    border-color: var(--cat-border, #F2B28C);
-    border-bottom: 3px solid var(--cat-border, #F2B28C);
+    color: var(--komorebi);
     font-weight: 700;
   }
 
+  .cat-chip.selected.type-keluar {
+    background: rgba(255, 92, 92, 0.2);
+    border-color: var(--api);
+    box-shadow: var(--glow-api);
+  }
+
+  .cat-chip.selected.type-masuk {
+    background: rgba(74, 222, 128, 0.2);
+    border-color: var(--tunas);
+    box-shadow: var(--glow-tunas);
+  }
+
+  .cat-chip.selected.type-tabung {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: var(--bara);
+    box-shadow: var(--glow-bara);
+  }
+
   .cat-chip:active {
-    transform: translateY(1px);
+    transform: scale(0.97);
   }
 
   .cat-chip-icon {
-    font-size: 16px;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .limit-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .limit-dot.near {
+    background: var(--bara);
+    box-shadow: var(--glow-bara);
+  }
+
+  .limit-dot.over {
+    background: var(--api);
+    box-shadow: var(--glow-api);
   }
 
   .empty-cats-text {
     font-size: 13px;
-    color: var(--mute);
+    color: var(--kabut);
     padding: 8px 0;
   }
 
@@ -671,39 +808,56 @@
   .nominal-input-box {
     display: flex;
     align-items: center;
-    background-color: var(--card);
-    border: 2px solid var(--line);
-    border-bottom: 4px solid #D6C8B2;
-    border-radius: var(--radius-card, 22px);
-    padding: 10px 18px;
-    gap: 8px;
+    background: var(--glass-2);
+    border: 1.5px solid var(--edge-soft);
+    border-radius: 20px;
+    padding: 12px 18px;
+    gap: 10px;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .nominal-input-box.state-keluar:focus-within {
+    border-color: var(--api);
+    box-shadow: var(--glow-api);
+  }
+
+  .nominal-input-box.state-masuk:focus-within {
+    border-color: var(--tunas);
+    box-shadow: var(--glow-tunas);
+  }
+
+  .nominal-input-box.state-tabung:focus-within {
+    border-color: var(--bara);
+    box-shadow: var(--glow-bara);
   }
 
   .currency-prefix {
-    font-size: 26px;
+    font-family: var(--font-display);
+    font-size: 24px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .nominal-field {
     flex: 1;
     border: none;
     background: transparent;
-    font-size: 32px;
+    font-family: var(--font-display);
+    font-size: 30px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     outline: none;
     width: 100%;
-    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
   }
 
   .nominal-field::placeholder {
-    color: #CFC2B4;
+    color: var(--lumut);
   }
 
   .max-limit-hint {
     font-size: 12px;
-    color: var(--warn);
+    color: var(--api);
     font-weight: 700;
     margin-top: -6px;
     padding-left: 6px;
@@ -715,6 +869,8 @@
     gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
   }
 
   .quick-chips-row::-webkit-scrollbar {
@@ -723,26 +879,32 @@
 
   .quick-pill {
     flex-shrink: 0;
-    min-height: 36px;
+    min-height: 34px;
     padding: 4px 12px;
-    border-radius: var(--radius-chip, 999px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
-    font-size: 13px;
+    border-radius: 999px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    transition: background-color 100ms ease-out;
+    transition: all 120ms ease;
+  }
+
+  .quick-pill:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
   }
 
   .quick-pill:active {
-    background-color: #EADFCB;
+    transform: scale(0.96);
   }
 
   .quick-pill.last-used-pill {
-    background-color: var(--cat-jajan-fill, #FBE0D3);
-    border-color: var(--cat-jajan-border, #F2B28C);
-    color: var(--ink);
+    background: rgba(255, 184, 77, 0.14);
+    border-color: rgba(255, 184, 77, 0.35);
+    color: var(--bara);
   }
 
   /* Goal selection chips */
@@ -750,12 +912,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    background: rgba(94, 214, 230, 0.05);
+    border: 1px solid rgba(94, 214, 230, 0.2);
+    border-radius: 16px;
+    padding: 10px 12px;
   }
 
   .goal-section-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--aether);
   }
 
   .goal-chips-scroll {
@@ -763,6 +929,8 @@
     gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
   }
 
   .goal-chips-scroll::-webkit-scrollbar {
@@ -771,13 +939,13 @@
 
   .goal-chip {
     flex-shrink: 0;
-    min-height: 36px;
+    min-height: 34px;
     padding: 4px 12px;
-    border-radius: var(--radius-chip, 999px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
-    font-size: 13px;
+    border-radius: 999px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
@@ -787,10 +955,11 @@
   }
 
   .goal-chip.selected {
-    background-color: var(--cat-nabung-fill, #FBE1E7);
-    border-color: var(--cat-nabung-border, #F2B8C6);
-    border-bottom: 3px solid var(--cat-nabung-border, #F2B8C6);
+    background: rgba(94, 214, 230, 0.2);
+    border-color: var(--aether);
+    color: var(--komorebi);
     font-weight: 700;
+    box-shadow: var(--glow-aether);
   }
 
   /* Meta row */
@@ -805,52 +974,64 @@
   .date-pills {
     display: flex;
     gap: 4px;
-    background-color: var(--bg);
-    border: 1.5px solid var(--line);
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
     border-radius: 999px;
-    padding: 2px;
+    padding: 3px;
   }
 
   .meta-pill {
     border: none;
     background: transparent;
     border-radius: 999px;
-    padding: 5px 10px;
+    padding: 5px 12px;
     font-size: 12px;
-    font-weight: 500;
-    color: var(--mute);
+    font-weight: 600;
+    color: var(--kabut);
     cursor: pointer;
+    transition: all 120ms ease;
+  }
+
+  .meta-pill:hover {
+    color: var(--komorebi);
   }
 
   .meta-pill.active {
-    background-color: var(--card);
-    color: var(--ink);
+    background: var(--glass-3);
+    color: var(--komorebi);
     font-weight: 700;
   }
 
   .toggle-note-btn {
     border: none;
     background: transparent;
-    color: var(--accent-pressed);
-    font-size: 13px;
+    color: var(--aether);
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    padding: 6px 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    transition: background 150ms ease;
+  }
+
+  .toggle-note-btn:hover {
+    background: var(--glass-1);
   }
 
   .custom-date-box {
     display: flex;
     align-items: center;
     gap: 8px;
-    background-color: var(--bg);
-    border: 1.5px solid var(--line);
-    border-radius: 12px;
-    padding: 6px 12px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 14px;
+    padding: 8px 14px;
   }
 
   .custom-date-label {
     font-size: 12px;
-    color: var(--mute);
+    color: var(--kabut);
+    font-weight: 600;
   }
 
   .custom-date-input {
@@ -858,18 +1039,19 @@
     background: transparent;
     font-family: inherit;
     font-size: 13px;
-    color: var(--ink);
+    color: var(--komorebi);
     outline: none;
+    color-scheme: dark;
   }
 
   /* Note field */
   .note-input-box {
     display: flex;
     align-items: center;
-    background-color: var(--card);
-    border: 1.5px solid var(--line);
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
     border-radius: 14px;
-    padding: 8px 12px;
+    padding: 10px 14px;
     gap: 8px;
   }
 
@@ -877,27 +1059,32 @@
     flex: 1;
     border: none;
     background: transparent;
-    font-size: 14px;
-    color: var(--ink);
+    font-size: 13px;
+    color: var(--komorebi);
     outline: none;
+  }
+
+  .note-field::placeholder {
+    color: var(--lumut);
   }
 
   .note-counter {
     font-size: 11px;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   /* Warning pill */
   .warning-pill {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background-color: #FEF3E2;
-    border: 1.5px solid #F4D58D;
-    border-radius: 12px;
+    gap: 8px;
+    background: rgba(255, 107, 74, 0.12);
+    border: 1px solid rgba(255, 107, 74, 0.35);
+    border-radius: 14px;
     padding: 8px 12px;
     font-size: 12px;
-    color: #7A5223;
+    color: var(--api);
+    font-weight: 600;
   }
 
   .warning-icon {
@@ -908,5 +1095,24 @@
     display: flex;
     gap: 10px;
     margin-top: 4px;
+  }
+
+  /* Custom submit gradients matching type */
+  :global(.btn-submit-keluar) {
+    background: linear-gradient(135deg, var(--api) 0%, #991B1B 100%) !important;
+    color: #FFF !important;
+    box-shadow: var(--glow-api) !important;
+  }
+
+  :global(.btn-submit-masuk) {
+    background: linear-gradient(135deg, var(--tunas) 0%, #15803D 100%) !important;
+    color: #FFF !important;
+    box-shadow: var(--glow-tunas) !important;
+  }
+
+  :global(.btn-submit-tabung) {
+    background: linear-gradient(135deg, var(--bara) 0%, #B45309 100%) !important;
+    color: var(--on-bara) !important;
+    box-shadow: var(--glow-bara) !important;
   }
 </style>

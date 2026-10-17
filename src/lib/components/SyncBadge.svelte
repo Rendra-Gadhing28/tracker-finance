@@ -102,66 +102,70 @@
     align-items: center;
     gap: 7px;
     min-height: 32px;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: var(--radius-chip, 999px);
-    border: 1.5px solid var(--line);
-    background-color: var(--card);
-    color: var(--mute);
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     box-sizing: border-box;
     user-select: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 150ms ease-out, border-color 150ms ease-out;
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
   }
 
   .sync-badge:hover,
   .sync-badge:active {
-    background-color: #F8F0E0;
-    border-color: var(--mute);
+    background: var(--glass-2);
+    border-color: var(--edge-bright);
+    color: var(--komorebi);
   }
 
   .sync-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
   }
 
   .sync-badge.status-ok .sync-dot,
   .sync-dot-inline.status-ok {
-    background-color: var(--good);
-    box-shadow: 0 0 0 2px rgba(141, 191, 122, 0.25);
+    background-color: var(--tunas);
+    box-shadow: 0 0 8px var(--tunas);
   }
 
   .sync-badge.status-saving .sync-dot,
   .sync-dot-inline.status-saving {
-    background-color: var(--warn);
-    box-shadow: 0 0 0 2px rgba(233, 182, 90, 0.25);
+    background-color: var(--bara);
+    box-shadow: 0 0 8px var(--bara);
     animation: dotPulse 1.4s ease-in-out infinite;
   }
 
   .sync-badge.status-offline .sync-dot,
   .sync-dot-inline.status-offline {
-    background-color: var(--mute);
+    background-color: var(--lumut);
   }
 
   .sync-badge.status-error .sync-dot,
   .sync-dot-inline.status-error {
-    background-color: var(--bad);
+    background-color: var(--api);
+    box-shadow: 0 0 8px var(--api);
   }
 
   .sync-dot-inline {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     display: inline-block;
   }
 
   .sync-text {
     line-height: 1;
-    color: var(--ink);
+    color: var(--kabut);
   }
 
   .popover-backdrop {
@@ -174,29 +178,30 @@
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    min-width: 210px;
-    background-color: var(--card);
-    border: 1.5px solid var(--line);
-    border-bottom: 3px solid #D6C8B2;
-    border-radius: 14px;
-    padding: 10px 12px;
+    min-width: 220px;
+    background: rgba(8, 14, 22, 0.95);
+    border: 1px solid var(--edge-soft);
+    border-radius: 16px;
+    padding: 12px 14px;
     z-index: 111;
-    box-shadow: 0 4px 12px rgba(74, 59, 50, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     animation: popoverFade 150ms ease-out;
   }
 
   .popover-header {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 13px;
-    color: var(--ink);
-    margin-bottom: 4px;
+    color: var(--komorebi);
+    margin-bottom: 6px;
   }
 
   .popover-desc {
     font-size: 12px;
-    color: var(--mute);
+    color: var(--kabut);
     line-height: 1.4;
   }
 

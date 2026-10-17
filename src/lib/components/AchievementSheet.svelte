@@ -60,14 +60,14 @@
     <!-- Streak Summary Banner -->
     <div class="streak-summary-card">
       <div class="streak-paw-circle">
-        <span class="streak-paw-icon">🐾</span>
+        <span class="streak-paw-icon">🔥</span>
       </div>
       <div class="streak-summary-info">
-        <h3 class="streak-main-title">
+        <h3 class="streak-main-title font-num tabular-nums">
           {currentStreak} hari hemat beruntun
         </h3>
         <p class="streak-sub-text">
-          Rekor terbaik: <strong>{bestStreak} hari</strong>
+          Rekor terbaik: <strong class="font-num tabular-nums">{bestStreak} hari</strong>
         </p>
       </div>
     </div>
@@ -77,7 +77,7 @@
       <h4 class="badges-section-title">
         Lencana ({unlockedCount} dari {totalBadges})
       </h4>
-      <span class="badges-pct tabular-nums">
+      <span class="badges-pct font-num tabular-nums">
         {Math.round((unlockedCount / Math.max(1, totalBadges)) * 100)}%
       </span>
     </div>
@@ -100,7 +100,7 @@
             {/if}
           </div>
           <span class="badge-name">{badge.name}</span>
-          <span class="badge-status-tag">
+          <span class="badge-status-tag font-num tabular-nums">
             {badge.unlocked ? 'Diraih ✓' : badge.progressText}
           </span>
         </button>
@@ -134,7 +134,7 @@
 
         <p class="detail-desc">{selectedBadge.desc}</p>
 
-        <div class="detail-progress-row">
+        <div class="detail-progress-row font-num tabular-nums">
           <span class="detail-progress-label">Kemajuan:</span>
           <strong class="detail-progress-val">{selectedBadge.progressText}</strong>
         </div>
@@ -158,10 +158,9 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background-color: var(--cat-jajan-fill);
-    border: 2px solid var(--cat-jajan-border);
-    border-bottom: 4px solid var(--accent-pressed);
-    border-radius: var(--radius-card, 22px);
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 20px;
     padding: 12px 16px;
   }
 
@@ -169,16 +168,18 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background-color: var(--card);
+    background: var(--glass-2);
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--accent);
+    border: 1.5px solid var(--bara);
+    box-shadow: var(--glow-bara);
     flex-shrink: 0;
   }
 
   .streak-paw-icon {
-    font-size: 22px;
+    font-size: 20px;
+    line-height: 1;
   }
 
   .streak-summary-info {
@@ -188,16 +189,22 @@
   }
 
   .streak-main-title {
-    font-size: 16px;
+    font-family: var(--font-display);
+    font-size: 15px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
+    letter-spacing: -0.01em;
     margin: 0;
   }
 
   .streak-sub-text {
-    font-size: 13px;
-    color: var(--mute);
+    font-size: 12px;
+    color: var(--kabut);
     margin: 0;
+  }
+
+  .streak-sub-text strong {
+    color: var(--bara);
   }
 
   /* Badges Header */
@@ -209,16 +216,17 @@
   }
 
   .badges-section-title {
-    font-size: 15px;
+    font-family: var(--font-display);
+    font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     margin: 0;
   }
 
   .badges-pct {
     font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--aether);
   }
 
   /* 3-Column Badges Grid */
@@ -235,34 +243,32 @@
     text-align: center;
     padding: 12px 6px;
     border-radius: 16px;
-    border: 2px solid var(--line);
-    border-bottom: 3px solid #D6C8B2;
-    background-color: var(--card);
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
     cursor: pointer;
     box-sizing: border-box;
-    transition: transform 120ms ease-out, border-color 120ms ease-out;
+    transition: transform 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out;
   }
 
   .badge-card:active {
-    transform: translateY(1px);
+    transform: scale(0.96);
   }
 
   .badge-card.unlocked {
-    background-color: #FFFDF7;
-    border-color: #F4D58D;
-    border-bottom-color: #E2C172;
+    background: rgba(217, 119, 6, 0.08);
+    border-color: rgba(217, 119, 6, 0.35);
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.12);
   }
 
   .badge-card.locked {
-    background-color: #F4EFE6;
-    border-color: #E5DDD1;
-    border-bottom-color: #D3C9BC;
-    opacity: 0.75;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed var(--edge-soft);
+    opacity: 0.55;
   }
 
   .badge-card.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent);
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
     transform: scale(1.03);
   }
 
@@ -274,16 +280,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--bg);
+    background: var(--glass-2);
     margin-bottom: 6px;
+    border: 1px solid var(--edge-soft);
   }
 
   .badge-card.unlocked .badge-icon-wrap {
-    background-color: var(--cat-masuk-fill);
+    border-color: rgba(217, 119, 6, 0.4);
+    background: rgba(217, 119, 6, 0.12);
+    box-shadow: 0 0 8px rgba(217, 119, 6, 0.15);
   }
 
   .badge-icon {
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1;
   }
 
@@ -291,33 +300,35 @@
     position: absolute;
     bottom: -2px;
     right: -2px;
-    font-size: 12px;
-    background-color: #8C7B6E;
-    color: #FFFDF7;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--kabut);
     border-radius: 50%;
     width: 16px;
     height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid var(--edge-soft);
   }
 
   .new-mini-dot {
     position: absolute;
     top: -2px;
     right: -2px;
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    background-color: var(--bad, #E06D53);
-    border: 2px solid var(--card);
+    background-color: var(--api);
+    box-shadow: var(--glow-api);
+    border: 1.5px solid var(--senja);
   }
 
   .badge-name {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--ink);
-    line-height: 1.2;
+    color: var(--komorebi);
+    line-height: 1.25;
     min-height: 28px;
     display: flex;
     align-items: center;
@@ -328,7 +339,7 @@
     font-size: 10px;
     font-weight: 700;
     margin-top: 4px;
-    color: var(--mute);
+    color: var(--kabut);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -336,7 +347,7 @@
   }
 
   .badge-card.unlocked .badge-status-tag {
-    color: #43702A;
+    color: var(--tunas);
   }
 
   /* Badge Detail Card */
@@ -344,12 +355,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background-color: var(--card);
-    border: 2px solid var(--accent);
-    border-bottom: 4px solid var(--accent-pressed);
+    background: var(--glass-2);
+    border: 1px solid var(--edge-bright);
     border-radius: 18px;
-    padding: 12px 14px;
-    box-shadow: 0 4px 12px rgba(74, 59, 50, 0.08);
+    padding: 14px 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), var(--glow-aether);
     animation: fadeIn 150ms ease-out;
   }
 
@@ -367,12 +377,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--cat-masuk-fill);
+    background: rgba(217, 119, 6, 0.12);
+    border: 1px solid rgba(217, 119, 6, 0.4);
     flex-shrink: 0;
   }
 
   .detail-badge-icon-box.locked {
-    background-color: #EADFCB;
+    background: rgba(0, 0, 0, 0.25);
+    border-color: var(--edge-soft);
     opacity: 0.8;
   }
 
@@ -388,9 +400,10 @@
   }
 
   .detail-name {
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     margin: 0;
   }
 
@@ -400,27 +413,39 @@
   }
 
   .text-good {
-    color: #43702A;
+    color: var(--tunas);
   }
 
   .text-mute {
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .detail-close-btn {
-    border: none;
-    background: transparent;
-    font-size: 16px;
-    color: var(--mute);
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    font-size: 13px;
+    color: var(--kabut);
     cursor: pointer;
-    padding: 4px 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 120ms ease;
+  }
+
+  .detail-close-btn:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
   }
 
   .detail-desc {
-    font-size: 13px;
-    color: var(--ink);
+    font-size: 12px;
+    color: var(--komorebi);
     margin: 0;
-    line-height: 1.35;
+    line-height: 1.4;
   }
 
   .detail-progress-row {
@@ -428,22 +453,19 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    background-color: var(--bg);
-    padding: 6px 10px;
-    border-radius: 10px;
   }
 
   .detail-progress-label {
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .detail-progress-val {
-    color: var(--ink);
+    color: var(--aether);
   }
 
   .footer-hint {
-    font-size: 12px;
-    color: var(--mute);
+    font-size: 11px;
+    color: var(--kabut);
     text-align: center;
     margin: 0;
   }
@@ -451,7 +473,7 @@
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(-4px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;

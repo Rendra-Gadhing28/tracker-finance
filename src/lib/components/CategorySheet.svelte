@@ -3,6 +3,7 @@
   import Button from './Button.svelte';
   import Chip from './Chip.svelte';
   import { parseRp, formatRp } from '../money.js';
+  import { settings } from '../stores/data.js';
 
   /**
    * @typedef {Object} Category
@@ -42,12 +43,12 @@
   ];
 
   const COLOR_OPTIONS = [
-    { key: 'jajan', label: 'Jajan', fill: '#FBE0D3', border: '#F2B28C' },
-    { key: 'pulsa', label: 'Pulsa', fill: '#DCEEF7', border: '#9CC5D9' },
-    { key: 'bensin', label: 'Bensin', fill: '#E4F2DA', border: '#9FC88A' },
-    { key: 'jajanin', label: 'Jajanin', fill: '#EBE0F5', border: '#C9B0E0' },
-    { key: 'nabung', label: 'Nabung', fill: '#FBE1E7', border: '#F2B8C6' },
-    { key: 'masuk', label: 'Masuk', fill: '#FBF0CF', border: '#F4D58D' }
+    { key: 'jajan', label: 'Jajan', fill: 'rgba(217, 119, 6, 0.16)', border: '#D97706' },
+    { key: 'pulsa', label: 'Pulsa', fill: 'rgba(59, 154, 184, 0.16)', border: '#3B9AB8' },
+    { key: 'bensin', label: 'Bensin', fill: 'rgba(56, 161, 105, 0.16)', border: '#38A169' },
+    { key: 'jajanin', label: 'Jajanin', fill: 'rgba(147, 112, 219, 0.16)', border: '#9370DB' },
+    { key: 'nabung', label: 'Nabung', fill: 'rgba(43, 138, 158, 0.16)', border: '#2B8A9E' },
+    { key: 'masuk', label: 'Masuk', fill: 'rgba(226, 232, 240, 0.16)', border: '#E2E8F0' }
   ];
 
   let name = $state('');
@@ -114,6 +115,37 @@
     currentIndex >= 0 && currentIndex < sameTypeCategories.length - 1
   );
 
+  // Budget allocation summary indicator
+  const weeklyAllowance = $derived(Number($settings?.uang_jajan_mingguan) || 145000);
+
+  const totalAllocatedKeluar = $derived.by(() => {
+    let sum = 0;
+    for (const c of existingCategories) {
+      if (c.tipe === 'keluar') {
+        if (category && c.id === category.id) {
+          sum += type === 'keluar' ? parsedLimit : 0;
+        } else {
+          sum += Number(c.limit_mingguan) || 0;
+        }
+      }
+    }
+    if (!category && type === 'keluar') {
+      sum += parsedLimit;
+    }
+    return sum;
+  });
+
+  const allocDiff = $derived(weeklyAllowance - totalAllocatedKeluar);
+  const allocStatus = $derived.by(() => {
+    if (allocDiff === 0) return 'equal';
+    if (allocDiff > 0) return 'less';
+    return 'more';
+  });
+
+  const allocPercent = $derived(
+    weeklyAllowance > 0 ? Math.min(100, Math.round((totalAllocatedKeluar / weeklyAllowance) * 100)) : 0
+  );
+
   function handleLimitInput(e) {
     const raw = e.target.value;
     const cleanNum = parseRp(raw);
@@ -171,11 +203,43 @@
   title={category ? 'Ubah Kategori' : 'Kategori Baru'}
 >
   <form class="cat-form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
+    <!-- Allocation Summary Indicator Card -->
+    {#if type === 'keluar'}
+      <div class="alloc-summary-card state-{allocStatus}">
+        <div class="alloc-header-row">
+          <span class="alloc-title">Alokasi Anggaran Mingguan</span>
+          <span class="alloc-badge font-num tabular-nums state-{allocStatus}">
+            {#if allocStatus === 'equal'}
+              Pas ✓
+            {:else if allocStatus === 'less'}
+              Sisa {formatRp(allocDiff)}
+            {:else}
+              Lebih {formatRp(Math.abs(allocDiff))}
+            {/if}
+          </span>
+        </div>
+
+        <div class="alloc-track">
+          <div
+            class="alloc-fill state-{allocStatus}"
+            style="width: {allocPercent}%;"
+          ></div>
+        </div>
+
+        <div class="alloc-footer-row font-num tabular-nums">
+          <span class="alloc-spent-text">
+            Teralokasi {formatRp(totalAllocatedKeluar)} dari jatah {formatRp(weeklyAllowance)}
+          </span>
+          <span class="alloc-pct-text">{allocPercent}%</span>
+        </div>
+      </div>
+    {/if}
+
     <!-- Nama -->
     <div class="form-group">
       <div class="label-row">
         <label for="cat-name">Nama Kategori</label>
-        <span class="char-count {trimmedName.length > 20 ? 'error' : ''}">
+        <span class="char-count {trimmedName.length > 20 ? 'error' : ''} tabular-nums">
           {trimmedName.length}/20
         </span>
       </div>
@@ -194,7 +258,7 @@
 
     <!-- Ikon Grid -->
     <div class="form-group">
-      <span class="group-label">Ikon ({icon})</span>
+      <span class="group-label">Pilih Ikon ({icon})</span>
       <div class="icon-grid" role="radiogroup" aria-label="Pilih Ikon">
         {#each EMOJI_LIST as item}
           <button
@@ -212,7 +276,7 @@
 
     <!-- Warna Swatches -->
     <div class="form-group">
-      <span class="group-label">Warna</span>
+      <span class="group-label">Pilih Warna</span>
       <div class="color-row" role="radiogroup" aria-label="Pilih Warna">
         {#each COLOR_OPTIONS as opt}
           <button
@@ -271,7 +335,7 @@
         <label for="cat-limit">
           {type === 'masuk' ? 'Target Pemasukan / Minggu' : 'Limit / Minggu'}
         </label>
-        <span class="limit-preview tabular-nums">{formatRp(parsedLimit)}</span>
+        <span class="limit-preview font-num tabular-nums">{formatRp(parsedLimit)}</span>
       </div>
       <div class="input-with-prefix">
         <span class="prefix">Rp</span>
@@ -279,6 +343,7 @@
           id="cat-limit"
           type="text"
           inputmode="numeric"
+          class="font-num tabular-nums"
           bind:value={limitInput}
           oninput={handleLimitInput}
         />
@@ -293,7 +358,7 @@
       <div class="form-group">
         <div class="label-row">
           <span class="group-label">Urutan Tampil</span>
-          <span class="order-info">Posisi #{currentIndex + 1} dari {sameTypeCategories.length}</span>
+          <span class="order-info tabular-nums">Posisi #{currentIndex + 1} dari {sameTypeCategories.length}</span>
         </div>
         <div class="order-controls">
           <Button
@@ -351,6 +416,117 @@
     gap: 16px;
   }
 
+  /* Allocation Summary Card */
+  .alloc-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 18px;
+    padding: 12px 14px;
+    transition: border-color 200ms ease;
+  }
+
+  .alloc-summary-card.state-equal {
+    border-color: rgba(56, 161, 105, 0.35);
+    box-shadow: 0 0 10px rgba(56, 161, 105, 0.12);
+  }
+
+  .alloc-summary-card.state-less {
+    border-color: rgba(217, 119, 6, 0.35);
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.12);
+  }
+
+  .alloc-summary-card.state-more {
+    border-color: rgba(209, 67, 67, 0.35);
+    box-shadow: 0 0 10px rgba(209, 67, 67, 0.12);
+  }
+
+  .alloc-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .alloc-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--kabut);
+  }
+
+  .alloc-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+
+  .alloc-badge.state-equal {
+    background: rgba(56, 161, 105, 0.12);
+    color: var(--tunas);
+    border: 1px solid rgba(56, 161, 105, 0.35);
+  }
+
+  .alloc-badge.state-less {
+    background: rgba(217, 119, 6, 0.12);
+    color: var(--bara);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+  }
+
+  .alloc-badge.state-more {
+    background: rgba(209, 67, 67, 0.12);
+    color: var(--api);
+    border: 1px solid rgba(209, 67, 67, 0.35);
+  }
+
+  .alloc-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .alloc-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: background-color 200ms ease;
+  }
+
+  .alloc-fill.state-equal {
+    background: var(--tunas);
+    box-shadow: var(--glow-tunas);
+  }
+
+  .alloc-fill.state-less {
+    background: var(--bara);
+    box-shadow: var(--glow-bara);
+  }
+
+  .alloc-fill.state-more {
+    background: var(--api);
+    box-shadow: var(--glow-api);
+  }
+
+  .alloc-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+
+  .alloc-spent-text {
+    color: var(--kabut);
+    font-weight: 500;
+  }
+
+  .alloc-pct-text {
+    color: var(--komorebi);
+    font-weight: 700;
+  }
+
+  /* Form groups */
   .form-group {
     display: flex;
     flex-direction: column;
@@ -367,25 +543,25 @@
   .group-label {
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .char-count,
   .order-info {
     font-size: 12px;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .char-count.error,
   .field-error {
-    color: var(--bad);
+    color: var(--api);
     font-size: 12px;
     font-weight: 700;
   }
 
   .locked-hint {
     font-size: 11px;
-    color: var(--mute);
+    color: var(--kabut);
     font-style: italic;
   }
 
@@ -393,19 +569,24 @@
     width: 100%;
     min-height: 44px;
     padding: 10px 14px;
-    border-radius: var(--radius-btn, 16px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
-    font-size: 15px;
+    border-radius: 16px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--komorebi);
+    font-size: 14px;
     box-sizing: border-box;
     transition: border-color 150ms ease-out, background-color 150ms ease-out;
   }
 
   input[type="text"]:focus {
-    border-color: var(--accent);
-    background-color: #FFFDF7;
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
     outline: none;
+    background: var(--glass-2);
+  }
+
+  input[type="text"]::placeholder {
+    color: var(--lumut);
   }
 
   .input-with-prefix {
@@ -417,20 +598,21 @@
   .input-with-prefix .prefix {
     position: absolute;
     left: 14px;
+    font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     pointer-events: none;
   }
 
   .input-with-prefix input {
-    padding-left: 42px;
+    padding-left: 44px;
   }
 
   .limit-preview {
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--aether);
   }
 
   /* 24-Emoji Icon Grid */
@@ -440,10 +622,10 @@
     gap: 6px;
     max-height: 128px;
     overflow-y: auto;
-    padding: 4px;
-    background-color: var(--bg);
+    padding: 6px;
+    background: var(--glass-1);
     border-radius: 16px;
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--edge-soft);
   }
 
   .icon-btn {
@@ -461,14 +643,14 @@
   }
 
   .icon-btn:hover {
-    background-color: rgba(74, 59, 50, 0.06);
+    background: var(--glass-2);
   }
 
   .icon-btn.selected {
-    background-color: #FFFDF7;
-    border-color: var(--accent);
-    box-shadow: 0 2px 6px rgba(229, 154, 106, 0.3);
-    transform: scale(1.08);
+    background: rgba(59, 154, 184, 0.16);
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
+    transform: scale(1.1);
   }
 
   /* Color Swatches */
@@ -476,19 +658,19 @@
     display: flex;
     gap: 10px;
     justify-content: space-between;
-    padding: 6px 0;
+    padding: 4px 0;
   }
 
   .color-swatch {
     flex: 1;
     height: 38px;
     border-radius: 12px;
-    border: 2.5px solid;
+    border: 2px solid;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 120ms ease-out;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
   }
 
   .color-swatch:hover {
@@ -496,14 +678,14 @@
   }
 
   .color-swatch.selected {
-    transform: scale(1.08);
-    box-shadow: 0 0 0 2px var(--ink);
+    transform: scale(1.1);
+    box-shadow: 0 0 12px currentColor, 0 0 0 2px var(--komorebi);
   }
 
   .check-mark {
     font-size: 14px;
     font-weight: 800;
-    color: var(--ink);
+    color: #060B12;
   }
 
   /* Type Row */

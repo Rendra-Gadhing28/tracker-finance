@@ -256,6 +256,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .nav-back-row {
@@ -266,12 +268,22 @@
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 14px;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
     text-decoration: none;
-    padding: 4px 0;
+    padding: 6px 12px;
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 999px;
+    transition: all 120ms ease;
+  }
+
+  .back-link:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
   }
 
   .header-section {
@@ -279,7 +291,7 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 20px;
   }
 
@@ -288,17 +300,18 @@
   }
 
   .title {
+    font-family: var(--font-display);
     font-size: 18px;
-    font-weight: 800;
-    color: var(--ink);
+    font-weight: 700;
+    color: var(--komorebi);
     margin: 0;
   }
 
   .subtitle {
     font-size: 13px;
-    color: var(--mute);
+    color: var(--kabut);
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.45;
     max-width: 320px;
   }
 
@@ -317,26 +330,27 @@
   label {
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   input {
     width: 100%;
     min-height: 44px;
     padding: 10px 14px;
-    border-radius: var(--radius-btn, 16px);
-    border: 1.5px solid var(--line);
-    background-color: var(--bg);
-    color: var(--ink);
+    border-radius: 14px;
+    border: 1px solid var(--edge-soft);
+    background-color: var(--glass-1);
+    color: var(--komorebi);
     font-size: 14px;
     box-sizing: border-box;
-    transition: border-color 150ms ease-out, background-color 150ms ease-out;
+    transition: all 120ms ease;
   }
 
   input:focus {
-    border-color: var(--accent);
-    background-color: #FFFDF7;
+    border-color: var(--aether);
+    background-color: var(--glass-2);
     outline: none;
+    box-shadow: var(--glow-aether);
   }
 
   .actions {
@@ -356,15 +370,17 @@
   }
 
   .status-box.status-success {
-    background-color: #EBF5E6;
-    color: #4C7A39;
-    border: 1.5px solid var(--good);
+    background-color: rgba(56, 161, 105, 0.10);
+    color: var(--tunas);
+    border: 1px solid var(--tunas);
+    box-shadow: var(--glow-tunas);
   }
 
   .status-box.status-error {
-    background-color: #FDF0EE;
-    color: #B33D30;
-    border: 1.5px solid var(--bad);
+    background-color: rgba(209, 67, 67, 0.10);
+    color: var(--api);
+    border: 1px solid var(--api);
+    box-shadow: var(--glow-api);
   }
 
   .disconnect-section {

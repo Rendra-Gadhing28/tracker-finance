@@ -21,7 +21,7 @@
   const customStyle = $derived(
     [
       fill ? `--card-fill: ${fill};` : '',
-      border ? `--card-border: ${border}; --card-bottom: ${border};` : ''
+      border ? `--card-border: ${border};` : ''
     ]
       .filter(Boolean)
       .join(' ')
@@ -38,66 +38,52 @@
 
 <style>
   .neko-card {
-    --card-fill: var(--card);
-    --card-border: var(--line);
-    --card-bottom: #D6C8B2;
+    --card-fill: var(--glass-1);
+    --card-border: var(--edge-soft);
 
     position: relative;
     background-color: var(--card-fill);
-    border: 2px solid var(--card-border);
-    border-bottom: var(--border-card-bottom, 5px) solid var(--card-bottom);
+    border: 1px solid var(--card-border);
     border-radius: var(--radius-card, 22px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     padding: 16px;
-    color: var(--ink);
+    color: var(--komorebi);
     box-sizing: border-box;
-    transition: transform 150ms ease-out, border-bottom-width 150ms ease-out;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: transform 140ms ease-out, border-color 140ms ease-out, background-color 140ms ease-out;
   }
 
   /* Preset category variants */
-  .neko-card.jajan {
-    --card-fill: var(--cat-jajan-fill);
-    --card-border: var(--cat-jajan-border);
-    --card-bottom: #E59A6A;
-  }
-
-  .neko-card.pulsa {
-    --card-fill: var(--cat-pulsa-fill);
-    --card-border: var(--cat-pulsa-border);
-    --card-bottom: #8BB6CC;
-  }
-
-  .neko-card.bensin {
-    --card-fill: var(--cat-bensin-fill);
-    --card-border: var(--cat-bensin-border);
-    --card-bottom: #8CB876;
-  }
-
+  .neko-card.jajan,
+  .neko-card.pulsa,
+  .neko-card.bensin,
   .neko-card.jajanin {
-    --card-fill: var(--cat-jajanin-fill);
-    --card-border: var(--cat-jajanin-border);
-    --card-bottom: #B79BCF;
+    --card-fill: rgba(209, 67, 67, 0.08);
+    --card-border: rgba(209, 67, 67, 0.22);
   }
 
   .neko-card.nabung {
-    --card-fill: var(--cat-nabung-fill);
-    --card-border: var(--cat-nabung-border);
-    --card-bottom: #E3A3B2;
+    --card-fill: rgba(217, 119, 6, 0.08);
+    --card-border: rgba(217, 119, 6, 0.22);
   }
 
   .neko-card.masuk {
-    --card-fill: var(--cat-masuk-fill);
-    --card-border: var(--cat-masuk-border);
-    --card-bottom: #E2C172;
+    --card-fill: rgba(56, 161, 105, 0.08);
+    --card-border: rgba(56, 161, 105, 0.22);
   }
 
   .neko-card.interactive {
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), border-color 220ms ease-out, background-color 220ms ease-out, box-shadow 320ms ease;
+    will-change: transform;
   }
 
   .neko-card.interactive:active {
-    transform: translateY(2px);
-    border-bottom-width: 3px;
+    transform: scale(0.95);
+    border-color: var(--edge-bright);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 </style>

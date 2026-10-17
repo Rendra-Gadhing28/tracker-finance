@@ -26,7 +26,8 @@ const MAX_GOALS = 10;
 const MAX_BATCH = 20;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 const ID_RE = /^[A-Za-z0-9_\-]{1,64}$/;
-const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+// ID Kategori & Aturan Warna: terima HEX (#RRGGBB) atau nama tema (jajan, pulsa, bensin, dll)
+const COLOR_RE = /^([a-zA-Z0-9_\-]{1,16}|#[0-9A-Fa-f]{6})$/;
 
 const SHEETS = {
   Transaksi: ['id', 'tanggal', 'tipe', 'kategori_id', 'nominal', 'catatan', 'goal_id'],
@@ -91,13 +92,31 @@ function setup() {
 
   if (bd.getLastRow() < 2) {
     bd.getRange(2, 1, 6, 7).setValues([
-      ['makan',   'Jajan & makan', '🍙', '#F2B28C', 72500,  'keluar', 1],
+      ['jajan',   'Jajan & makan', '🍙', '#F2B28C', 72500,  'keluar', 1],
       ['pulsa',   'Pulsa',         '📱', '#9CC5D9', 4000,   'keluar', 2],
       ['bensin',  'Bensin',        '⛽', '#9FC88A', 25000,  'keluar', 3],
       ['jajanin', 'Jajanin',       '🎁', '#C9B0E0', 14500,  'keluar', 4],
       ['nabung',  'Nabung',        '🐷', '#F2B8C6', 29000,  'tabung', 5],
-      ['uang',    'Uang jajan',    '💰', '#F4D58D', 145000, 'masuk',  6]
+      ['masuk',   'Uang jajan',    '💰', '#F4D58D', 145000, 'masuk',  6]
     ]);
+  } else {
+    // Migrasi data lama jika masih menggunakan id 'makan' atau 'uang'
+    const bdData = bd.getRange(2, 1, Math.min(bd.getLastRow() - 1, 20), 1).getValues();
+    for (let i = 0; i < bdData.length; i++) {
+      if (bdData[i][0] === 'makan') bd.getRange(i + 2, 1).setValue('jajan');
+      if (bdData[i][0] === 'uang') bd.getRange(i + 2, 1).setValue('masuk');
+    }
+  }
+
+  // Migrasi id transaksi lama di sheet Transaksi
+  if (tx.getLastRow() > 1) {
+    const txCats = tx.getRange(2, 4, tx.getLastRow() - 1, 1).getValues();
+    let txChanged = false;
+    for (let i = 0; i < txCats.length; i++) {
+      if (txCats[i][0] === 'makan') { txCats[i][0] = 'jajan'; txChanged = true; }
+      if (txCats[i][0] === 'uang') { txCats[i][0] = 'masuk'; txChanged = true; }
+    }
+    if (txChanged) tx.getRange(2, 4, txCats.length, 1).setValues(txCats);
   }
   const st = ss.getSheetByName('Setting');
   if (st.getLastRow() < 2) {
@@ -183,12 +202,12 @@ function resetAllData() {
       bd.getRange(2, 1, bd.getLastRow() - 1, bd.getLastColumn()).clearContent();
     }
     bd.getRange(2, 1, 6, 7).setValues([
-      ['makan',   'Jajan & makan', '🍙', '#F2B28C', 72500,  'keluar', 1],
+      ['jajan',   'Jajan & makan', '🍙', '#F2B28C', 72500,  'keluar', 1],
       ['pulsa',   'Pulsa',         '📱', '#9CC5D9', 4000,   'keluar', 2],
       ['bensin',  'Bensin',        '⛽', '#9FC88A', 25000,  'keluar', 3],
       ['jajanin', 'Jajanin',       '🎁', '#C9B0E0', 14500,  'keluar', 4],
       ['nabung',  'Nabung',        '🐷', '#F2B8C6', 29000,  'tabung', 5],
-      ['uang',    'Uang jajan',    '💰', '#F4D58D', 145000, 'masuk',  6]
+      ['masuk',   'Uang jajan',    '💰', '#F4D58D', 145000, 'masuk',  6]
     ]);
   }
 
@@ -201,7 +220,57 @@ function handleSheetChange(e) {
   if (e && e.changeType === 'FORMAT') return;
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
-  try { bump_(); } finally { lock.releaseLock(); }
+  try {
+    bump_();
+    updateDailyChartData_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getFormulaSep_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const loc = (ss.getSpreadsheetLocale() || '').toLowerCase();
+  const isSemi = ['id', 'in', 'fr', 'de', 'es', 'it', 'nl', 'pt', 'ru', 'tr', 'vi']
+    .some(l => loc === l || loc.startsWith(l + '_') || loc.startsWith(l + '-'));
+  return isSemi ? ';' : ',';
+}
+
+function updateDailyChartData_() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const dbSheet = ss.getSheetByName('Dashboard');
+    if (!dbSheet) return;
+
+    dbSheet.getRange('N8:O8').setValues([['Tanggal', 'Pengeluaran']])
+      .setBackground('#EADFCB')
+      .setFontColor('#4A3B32')
+      .setFontWeight('bold');
+
+    const txRows = rows_('Transaksi').filter(t => t.tipe === 'keluar');
+    const dailyMap = {};
+    txRows.forEach(t => {
+      const d = String(t.tanggal || '').slice(0, 10);
+      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        dailyMap[d] = (dailyMap[d] || 0) + (Number(t.nominal) || 0);
+      }
+    });
+
+    const dates = Object.keys(dailyMap).sort();
+    const output = [];
+    if (dates.length === 0) {
+      output.push(['Belum ada transaksi', 0]);
+    } else {
+      dates.forEach(d => output.push([d, dailyMap[d]]));
+    }
+
+    while (output.length < 22) output.push(['', '']);
+    dbSheet.getRange(9, 14, output.length, 2).setValues(output);
+    dbSheet.getRange('N9:N30').setNumberFormat('@');
+    dbSheet.getRange('O9:O30').setNumberFormat('"Rp"#,##0');
+  } catch (e) {
+    Logger.log('updateDailyChartData_ error: ' + e);
+  }
 }
 
 /* ============================ DASHBOARD VISUAL ============================ */
@@ -218,6 +287,8 @@ function buildDashboard() {
   dbSheet.getCharts().forEach(c => dbSheet.removeChart(c));
   dbSheet.setHiddenGridlines(false);
 
+  const sep = getFormulaSep_();
+
   // 1. Banner Header
   dbSheet.getRange('A1:L2').merge()
     .setValue('🐾 NEKO DOMPET — FINANCIAL OVERVIEW & REAL-TIME DASHBOARD')
@@ -228,21 +299,21 @@ function buildDashboard() {
     .setHorizontalAlignment('center')
     .setVerticalAlignment('middle');
 
-  // 2. KPI Cards
+  // 2. KPI Cards (otomatis menyesuaikan pemisah formula sesuai locale spreadsheet)
   createKpiCard_(dbSheet, 'A4:C4', 'A5:C6', '💰 SALDO DOMPET SAAT INI', 
-    '=IFERROR(VLOOKUP("saldo_awal", Setting!A:B, 2, FALSE), 0) + SUMIFS(Transaksi!E:E, Transaksi!C:C, "masuk") - SUMIFS(Transaksi!E:E, Transaksi!C:C, "keluar") - SUMIFS(Transaksi!E:E, Transaksi!C:C, "tabung")',
+    `=IFERROR(VLOOKUP("saldo_awal"${sep} Setting!A:B${sep} 2${sep} FALSE)${sep} 0) + SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "masuk") - SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "keluar") - SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "tabung")`,
     '#E59A6A', '#FFFDF7');
 
   createKpiCard_(dbSheet, 'D4:F4', 'D5:F6', '📥 TOTAL UANG MASUK', 
-    '=SUMIFS(Transaksi!E:E, Transaksi!C:C, "masuk")', 
+    `=SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "masuk")`, 
     '#7BA883', '#FFFDF7');
 
   createKpiCard_(dbSheet, 'G4:I4', 'G5:I6', '💸 TOTAL PENGELUARAN', 
-    '=SUMIFS(Transaksi!E:E, Transaksi!C:C, "keluar")', 
+    `=SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "keluar")`, 
     '#C46A58', '#FFFDF7');
 
   createKpiCard_(dbSheet, 'J4:L4', 'J5:L6', '🐷 TOTAL DITABUNG', 
-    '=SUMIFS(Transaksi!E:E, Transaksi!C:C, "tabung")', 
+    `=SUMIFS(Transaksi!E:E${sep} Transaksi!C:C${sep} "tabung")`, 
     '#5C82A6', '#FFFDF7');
 
   // 3. Tabel Ringkasan Kategori
@@ -263,12 +334,12 @@ function buildDashboard() {
     .setVerticalAlignment('middle');
 
   const catDataRows = [
-    ['=IFERROR(Budget!B2, "Jajan & makan")', '=IFERROR(Budget!F2, "keluar")', '=IFERROR(Budget!E2, 72500)', '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A2)', '=C10-D10', '=IFERROR(D10/C10, 0)'],
-    ['=IFERROR(Budget!B3, "Pulsa")',         '=IFERROR(Budget!F3, "keluar")', '=IFERROR(Budget!E3, 4000)',  '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A3)', '=C11-D11', '=IFERROR(D11/C11, 0)'],
-    ['=IFERROR(Budget!B4, "Bensin")',        '=IFERROR(Budget!F4, "keluar")', '=IFERROR(Budget!E4, 25000)', '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A4)', '=C12-D12', '=IFERROR(D12/C12, 0)'],
-    ['=IFERROR(Budget!B5, "Jajanin")',       '=IFERROR(Budget!F5, "keluar")', '=IFERROR(Budget!E5, 14500)', '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A5)', '=C13-D13', '=IFERROR(D13/C13, 0)'],
-    ['=IFERROR(Budget!B6, "Nabung")',        '=IFERROR(Budget!F6, "tabung")', '=IFERROR(Budget!E6, 29000)', '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A6)', '=C14-D14', '=IFERROR(D14/C14, 0)'],
-    ['=IFERROR(Budget!B7, "Uang jajan")',    '=IFERROR(Budget!F7, "masuk")',  '=IFERROR(Budget!E7, 145000)', '=SUMIFS(Transaksi!E:E, Transaksi!D:D, Budget!A7)', '—', '—']
+    [`=IFERROR(Budget!B2${sep} "Jajan & makan")`, `=IFERROR(Budget!F2${sep} "keluar")`, `=IFERROR(Budget!E2${sep} 72500)`,  `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A2)`, '=C10-D10', `=IFERROR(D10/C10${sep} 0)`],
+    [`=IFERROR(Budget!B3${sep} "Pulsa")`,         `=IFERROR(Budget!F3${sep} "keluar")`, `=IFERROR(Budget!E3${sep} 4000)`,   `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A3)`, '=C11-D11', `=IFERROR(D11/C11${sep} 0)`],
+    [`=IFERROR(Budget!B4${sep} "Bensin")`,        `=IFERROR(Budget!F4${sep} "keluar")`, `=IFERROR(Budget!E4${sep} 25000)`,  `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A4)`, '=C12-D12', `=IFERROR(D12/C12${sep} 0)`],
+    [`=IFERROR(Budget!B5${sep} "Jajanin")`,       `=IFERROR(Budget!F5${sep} "keluar")`, `=IFERROR(Budget!E5${sep} 14500)`,  `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A5)`, '=C13-D13', `=IFERROR(D13/C13${sep} 0)`],
+    [`=IFERROR(Budget!B6${sep} "Nabung")`,        `=IFERROR(Budget!F6${sep} "tabung")`, `=IFERROR(Budget!E6${sep} 29000)`,  `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A6)`, '=C14-D14', `=IFERROR(D14/C14${sep} 0)`],
+    [`=IFERROR(Budget!B7${sep} "Uang jajan")`,    `=IFERROR(Budget!F7${sep} "masuk")`,  `=IFERROR(Budget!E7${sep} 145000)`, `=SUMIFS(Transaksi!E:E${sep} Transaksi!D:D${sep} Budget!A7)`, '="—"',     '="—"']
   ];
 
   dbSheet.getRange('A10:F15').setFormulas(catDataRows);
@@ -280,16 +351,7 @@ function buildDashboard() {
   dbSheet.getRange('A10:F15').setBorder(true, true, true, true, true, true, '#D5C7B2', SpreadsheetApp.BorderStyle.SOLID);
 
   // 4. Helper Pengeluaran Harian untuk Grafik (Kolom N-O)
-  dbSheet.getRange('N8:O8').setValues([['Tanggal', 'Pengeluaran']])
-    .setBackground('#EADFCB')
-    .setFontColor('#4A3B32')
-    .setFontWeight('bold');
-  
-  dbSheet.getRange('N9').setFormula(
-    '=IFERROR(QUERY(Transaksi!A2:G, "select toDate(B), sum(E) where C = \'keluar\' and E is not null group by toDate(B) order by toDate(B) label toDate(B) \'\', sum(E) \'\'", 0), {"Belum ada transaksi", 0})'
-  );
-  dbSheet.getRange('N9:N50').setNumberFormat('yyyy-mm-dd');
-  dbSheet.getRange('O9:O50').setNumberFormat('"Rp"#,##0');
+  updateDailyChartData_();
 
   // 5. Donut Chart (Proporsi Pengeluaran)
   const pieChart = dbSheet.newChart()
@@ -587,7 +649,14 @@ function saveTx_(d) {
   if (!ISO_RE.test(tanggal) || isNaN(ms)) fail_('tanggal_tidak_valid');
   if (ms > Date.now() + 10 * 60 * 1000) fail_('tanggal_masa_depan');
 
-  const kat = rows_('Budget').filter(r => String(r.id) === String(d.kategori_id))[0];
+  const reqCatId = String(d.kategori_id || '');
+  let kat = rows_('Budget').filter(r => String(r.id) === reqCatId)[0];
+  // Toleransi alias id (jajan <-> makan, masuk <-> uang)
+  if (!kat && reqCatId === 'jajan') kat = rows_('Budget').filter(r => String(r.id) === 'makan')[0];
+  if (!kat && reqCatId === 'makan') kat = rows_('Budget').filter(r => String(r.id) === 'jajan')[0];
+  if (!kat && reqCatId === 'masuk') kat = rows_('Budget').filter(r => String(r.id) === 'uang')[0];
+  if (!kat && reqCatId === 'uang') kat = rows_('Budget').filter(r => String(r.id) === 'masuk')[0];
+
   if (!kat) fail_('kategori_tidak_ada');
   if (kat.tipe !== tipe) fail_('tipe_tidak_cocok');
 
@@ -596,9 +665,13 @@ function saveTx_(d) {
     catatan: String(d.catatan || '').slice(0, 60),
     goal_id: tipe === 'tabung' ? String(d.goal_id || '') : ''
   });
+  updateDailyChartData_();
 }
 
-function delTx_(d) { remove_('Transaksi', idOf_(d.id)); }
+function delTx_(d) {
+  remove_('Transaksi', idOf_(d.id));
+  updateDailyChartData_();
+}
 
 function saveBudget_(d) {
   const id = idOf_(d.id);
@@ -610,7 +683,7 @@ function saveBudget_(d) {
   const tipe = String(d.tipe);
   if (TIPE.indexOf(tipe) < 0) fail_('tipe_tidak_valid');
   const warna = String(d.warna || '');
-  if (!HEX_RE.test(warna)) fail_('warna_tidak_valid');
+  if (!COLOR_RE.test(warna)) fail_('warna_tidak_valid');
   const ikon = String(d.ikon || '').trim();
   if (ikon.length < 1 || ikon.length > 8) fail_('ikon_tidak_valid');
   const limit = toInt_(d.limit_mingguan);
@@ -637,7 +710,7 @@ function saveGoal_(d) {
   const nama = String(d.nama || '').trim();
   if (nama.length < 1 || nama.length > 24) fail_('nama_tidak_valid');
   const warna = String(d.warna || '');
-  if (!HEX_RE.test(warna)) fail_('warna_tidak_valid');
+  if (!COLOR_RE.test(warna)) fail_('warna_tidak_valid');
   const ikon = String(d.ikon || '').trim();
   if (ikon.length < 1 || ikon.length > 8) fail_('ikon_tidak_valid');
   const target = toInt_(d.target);

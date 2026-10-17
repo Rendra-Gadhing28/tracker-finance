@@ -63,7 +63,10 @@
       <div class="sheet-header">
         <h2 class="sheet-title">{title}</h2>
         <button type="button" class="sheet-close-btn" onclick={close} aria-label="Tutup">
-          ✕
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
     {/if}
@@ -78,8 +81,9 @@
   .sheet-scrim {
     position: fixed;
     inset: 0;
-    background-color: rgba(74, 59, 50, 0.45);
-    backdrop-filter: blur(2px);
+    background: var(--scrim, rgba(3, 7, 12, 0.75));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 100;
     animation: fadeIn 200ms ease-out forwards;
   }
@@ -91,11 +95,15 @@
     transform: translateX(-50%);
     width: 100%;
     max-width: 480px;
-    background-color: var(--card);
+    background: rgba(8, 14, 22, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border-top-left-radius: var(--radius-sheet, 28px);
     border-top-right-radius: var(--radius-sheet, 28px);
-    border: 2px solid var(--line);
+    border: 1px solid var(--edge-soft);
+    border-top: 1px solid var(--edge-bright);
     border-bottom: none;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
     box-sizing: border-box;
     z-index: 101;
     max-height: 88vh;
@@ -107,55 +115,78 @@
 
   .sheet-handle-wrap {
     width: 100%;
-    padding: 10px 0 6px;
+    padding: 12px 0 8px;
     display: flex;
     justify-content: center;
     cursor: pointer;
+    touch-action: pan-y;
   }
 
   .sheet-handle {
-    width: 42px;
+    width: 44px;
     height: 5px;
     border-radius: 999px;
-    background-color: var(--line);
+    background: rgba(255, 255, 255, 0.22);
+    transition: background 150ms ease;
+  }
+
+  .sheet-handle-wrap:hover .sheet-handle {
+    background: rgba(255, 255, 255, 0.4);
   }
 
   .sheet-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 20px 12px;
-    border-bottom: 1px solid var(--line);
+    padding: 6px 20px 14px;
+    border-bottom: 1px solid var(--edge-soft);
   }
 
   .sheet-title {
-    font-size: 18px;
+    font-family: var(--font-ui);
+    font-size: 17px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
+    letter-spacing: -0.01em;
+    margin: 0;
   }
 
   .sheet-close-btn {
     width: 36px;
     height: 36px;
-    border: none;
-    background: transparent;
-    color: var(--mute);
-    font-size: 16px;
-    border-radius: 999px;
+    position: relative;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: all 150ms ease;
+  }
+
+  .sheet-close-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .sheet-close-btn:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
   }
 
   .sheet-close-btn:active {
-    background-color: var(--line);
+    transform: scale(0.92);
   }
 
   .sheet-content {
     overflow-y: auto;
     padding: 16px 20px;
     -webkit-overflow-scrolling: touch;
+    color: var(--komorebi);
   }
 
   @keyframes fadeIn {

@@ -35,12 +35,12 @@
   ];
 
   const COLOR_OPTIONS = [
-    { id: 'jajan', label: 'Jajan', fill: '#FBE0D3', border: '#F2B28C' },
-    { id: 'pulsa', label: 'Pulsa', fill: '#DCEEF7', border: '#9CC5D9' },
-    { id: 'bensin', label: 'Bensin', fill: '#E4F2DA', border: '#9FC88A' },
-    { id: 'jajanin', label: 'Jajanin', fill: '#EBE0F5', border: '#C9B0E0' },
-    { id: 'nabung', label: 'Nabung', fill: '#FBE1E7', border: '#F2B8C6' },
-    { id: 'masuk', label: 'Masuk', fill: '#FBF0CF', border: '#F4D58D' }
+    { id: 'jajan', label: 'Jajan', fill: 'rgba(217, 119, 6, 0.16)', border: '#D97706' },
+    { id: 'pulsa', label: 'Pulsa', fill: 'rgba(59, 154, 184, 0.16)', border: '#3B9AB8' },
+    { id: 'bensin', label: 'Bensin', fill: 'rgba(56, 161, 105, 0.16)', border: '#38A169' },
+    { id: 'jajanin', label: 'Jajanin', fill: 'rgba(147, 112, 219, 0.16)', border: '#9370DB' },
+    { id: 'nabung', label: 'Nabung', fill: 'rgba(43, 138, 158, 0.16)', border: '#2B8A9E' },
+    { id: 'masuk', label: 'Masuk', fill: 'rgba(226, 232, 240, 0.16)', border: '#E2E8F0' }
   ];
 
   let nama = $state('');
@@ -85,6 +85,12 @@
     let num = parseInt(clean, 10) || 0;
     if (num > 100000000) num = 100000000;
     rawTarget = num > 0 ? num.toLocaleString('id-ID') : '';
+  }
+
+  function applyQuickTarget(amount) {
+    if (amount >= 1000 && amount <= 100000000) {
+      rawTarget = amount.toLocaleString('id-ID');
+    }
   }
 
   function handleSubmit() {
@@ -147,7 +153,7 @@
             maxlength="24"
             bind:value={nama}
           />
-          <span class="char-count">{nama.length}/24</span>
+          <span class="char-count tabular-nums">{nama.length}/24</span>
         </div>
       </div>
 
@@ -160,7 +166,7 @@
             id="goal-target-input"
             type="text"
             inputmode="numeric"
-            class="nominal-field tabular-nums"
+            class="nominal-field font-num tabular-nums"
             placeholder="0"
             value={rawTarget}
             oninput={handleTargetInput}
@@ -169,6 +175,25 @@
         {#if numericTarget > 0 && numericTarget < 1000}
           <p class="field-error">Minimal Rp 1.000</p>
         {/if}
+
+        <!-- Quick target chips -->
+        <div class="quick-chips-row">
+          <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickTarget(50000)}>
+            50.000
+          </button>
+          <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickTarget(100000)}>
+            100.000
+          </button>
+          <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickTarget(250000)}>
+            250.000
+          </button>
+          <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickTarget(500000)}>
+            500.000
+          </button>
+          <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickTarget(1000000)}>
+            1.000.000
+          </button>
+        </div>
       </div>
 
       <!-- Icon Picker -->
@@ -268,67 +293,128 @@
   .form-label {
     font-size: 13px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
   }
 
   .input-card {
     display: flex;
     align-items: center;
-    background-color: var(--card);
-    border: 2px solid var(--line);
-    border-radius: var(--radius-btn, 16px);
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
+    border-radius: 16px;
     padding: 10px 14px;
     gap: 8px;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .input-card:focus-within {
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
   }
 
   .text-input {
     flex: 1;
     border: none;
     background: transparent;
-    font-size: 15px;
-    color: var(--ink);
+    font-size: 14px;
+    color: var(--komorebi);
     outline: none;
     font-weight: 500;
   }
 
+  .text-input::placeholder {
+    color: var(--lumut);
+  }
+
   .char-count {
-    font-size: 12px;
-    color: var(--mute);
+    font-size: 11px;
+    color: var(--kabut);
   }
 
   .nominal-input-card {
     display: flex;
     align-items: center;
-    background-color: var(--card);
-    border: 2px solid var(--line);
-    border-bottom: 4px solid #D6C8B2;
-    border-radius: var(--radius-card, 22px);
-    padding: 10px 16px;
-    gap: 8px;
+    background: var(--glass-2);
+    border: 1.5px solid var(--edge-soft);
+    border-radius: 20px;
+    padding: 12px 18px;
+    gap: 10px;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .nominal-input-card:focus-within {
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
   }
 
   .currency-prefix {
+    font-family: var(--font-display);
     font-size: 24px;
     font-weight: 700;
-    color: var(--mute);
+    color: var(--kabut);
   }
 
   .nominal-field {
     flex: 1;
     border: none;
     background: transparent;
+    font-family: var(--font-display);
     font-size: 28px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     outline: none;
     width: 100%;
+    letter-spacing: -0.02em;
+  }
+
+  .nominal-field::placeholder {
+    color: var(--lumut);
   }
 
   .field-error {
     font-size: 12px;
-    color: var(--bad);
+    color: var(--api);
     font-weight: 700;
     margin-top: 2px;
+  }
+
+  /* Quick chips */
+  .quick-chips-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-top: 4px;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .quick-chips-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-pill {
+    flex-shrink: 0;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+
+  .quick-pill:hover {
+    color: var(--komorebi);
+    border-color: var(--edge-bright);
+    background: var(--glass-2);
+  }
+
+  .quick-pill:active {
+    transform: scale(0.96);
   }
 
   /* 24 Icons Grid */
@@ -336,8 +422,8 @@
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 8px;
-    background-color: var(--bg);
-    border: 1.5px solid var(--line);
+    background: var(--glass-1);
+    border: 1px solid var(--edge-soft);
     border-radius: 16px;
     padding: 10px;
   }
@@ -355,11 +441,15 @@
     transition: all 120ms ease-out;
   }
 
+  .icon-btn:hover {
+    background: var(--glass-2);
+  }
+
   .icon-btn.selected {
-    background-color: var(--card);
-    border-color: var(--accent);
+    background: rgba(94, 214, 230, 0.2);
+    border-color: var(--aether);
+    box-shadow: var(--glow-aether);
     transform: scale(1.1);
-    box-shadow: 0 2px 6px rgba(74, 59, 50, 0.1);
   }
 
   /* Colors Row */
@@ -371,27 +461,27 @@
   }
 
   .color-btn {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background-color: var(--c-fill);
-    border: 3px solid var(--c-border);
+    border: 2px solid var(--c-border);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 120ms ease-out;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
   }
 
   .color-btn.selected {
     transform: scale(1.12);
-    box-shadow: 0 0 0 2px var(--ink);
+    box-shadow: 0 0 12px var(--c-border), 0 0 0 2px var(--komorebi);
   }
 
   .check-mark {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+    color: #060B12;
   }
 
   .actions-row {
@@ -407,7 +497,10 @@
     align-items: center;
     text-align: center;
     gap: 12px;
-    padding: 12px 6px;
+    padding: 16px 8px;
+    background: rgba(255, 107, 74, 0.08);
+    border: 1px solid rgba(255, 107, 74, 0.3);
+    border-radius: 20px;
   }
 
   .warning-icon {
@@ -415,15 +508,16 @@
   }
 
   .confirm-title {
+    font-family: var(--font-ui);
     font-size: 17px;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--komorebi);
     margin: 0;
   }
 
   .confirm-desc {
-    font-size: 14px;
-    color: var(--mute);
+    font-size: 13px;
+    color: var(--kabut);
     line-height: 1.4;
     margin: 0;
   }
