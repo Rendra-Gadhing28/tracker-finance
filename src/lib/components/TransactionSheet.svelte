@@ -48,15 +48,30 @@
   let isSubmitting = $state(false);
   let scrollContainerRef = $state(null);
 
-  // All available categories sorted by urut
-  const allCategories = $derived(
-    (categories || [])
-      .slice()
-      .sort((a, b) => (a.urut || 0) - (b.urut || 0))
-  );
+  const DEFAULT_MASUK_CAT = {
+    id: 'masuk',
+    nama: 'Uang jajan',
+    ikon: '💰',
+    warna: 'masuk',
+    limit_mingguan: 145000,
+    tipe: 'masuk',
+    urut: 6
+  };
+
+  // Categories for active type, sorted by urut (PRD 12.3: hanya kategori bertipe sama)
+  const currentCategories = $derived.by(() => {
+    const normType = (tipe || 'keluar').trim().toLowerCase();
+    const matching = (categories || []).filter(
+      (c) => (c.tipe || 'keluar').trim().toLowerCase() === normType
+    );
+    if (matching.length === 0 && normType === 'masuk') {
+      return [DEFAULT_MASUK_CAT];
+    }
+    return matching.slice().sort((a, b) => (a.urut || 0) - (b.urut || 0));
+  });
 
   const selectedCategory = $derived(
-    allCategories.find((c) => c.id === kategoriId) || allCategories[0] || null
+    currentCategories.find((c) => c.id === kategoriId) || currentCategories[0] || null
   );
 
   const numericNominal = $derived(parseRp(rawNominal));
@@ -77,9 +92,12 @@
 
   function getLastUsedCategoryId(targetType) {
     const normTarget = (targetType || '').trim().toLowerCase();
-    const matchingCats = (categories || []).filter(
+    let matchingCats = (categories || []).filter(
       (c) => (c.tipe || '').trim().toLowerCase() === normTarget
     );
+    if (matchingCats.length === 0 && normTarget === 'masuk') {
+      matchingCats = [DEFAULT_MASUK_CAT];
+    }
     if (matchingCats.length === 0) return '';
 
     // Check newest transaction in transactions matching targetType
@@ -241,12 +259,12 @@
     }
   });
 
-  // Ensure valid category is selected when category list changes
+  // Ensure valid category is selected for current type
   $effect(() => {
-    if (allCategories.length > 0) {
-      const exists = allCategories.some((c) => c.id === kategoriId);
+    if (currentCategories.length > 0) {
+      const exists = currentCategories.some((c) => c.id === kategoriId);
       if (!exists) {
-        kategoriId = getLastUsedCategoryId(tipe) || allCategories[0].id;
+        kategoriId = getLastUsedCategoryId(tipe) || currentCategories[0].id;
       }
     } else {
       kategoriId = '';
@@ -434,10 +452,10 @@
       role="radiogroup"
       aria-label="Pilih kategori"
     >
-      {#if allCategories.length === 0}
+      {#if currentCategories.length === 0}
         <p class="empty-cats-text">Belum ada kategori.</p>
       {:else}
-        {#each allCategories as cat}
+        {#each currentCategories as cat}
           {@const catLimit = Number(cat.limit_mingguan) || 0}
           {@const catSpent = categorySpentMap[cat.id] || 0}
           {@const isNearLimit = catLimit > 0 && catSpent >= catLimit * 0.85 && catSpent <= catLimit}
@@ -490,24 +508,42 @@
           ↺ {lastNominalForCategory.toLocaleString('id-ID')}
         </button>
       {/if}
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(2000)}>
-        2.000
-      </button>
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(5000)}>
-        5.000
-      </button>
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(10000)}>
-        10.000
-      </button>
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(15000)}>
-        15.000
-      </button>
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(20000)}>
-        20.000
-      </button>
-      <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(50000)}>
-        50.000
-      </button>
+      {#if tipe === 'masuk'}
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(50000)}>
+          50.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(100000)}>
+          100.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(145000)}>
+          145.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(200000)}>
+          200.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(500000)}>
+          500.000
+        </button>
+      {:else}
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(2000)}>
+          2.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(5000)}>
+          5.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(10000)}>
+          10.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(15000)}>
+          15.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(20000)}>
+          20.000
+        </button>
+        <button type="button" class="quick-pill font-num tabular-nums" onclick={() => applyQuickAmount(50000)}>
+          50.000
+        </button>
+      {/if}
     </div>
 
     <!-- Goal Target Selection for Tabung (PRD 12.3 & 18.5) -->

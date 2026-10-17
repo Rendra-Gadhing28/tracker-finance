@@ -84,4 +84,46 @@ const categories = [
   console.log('✓ Tab tipe memilih kategori sesuai tipe dengan benar');
 }
 
+// 4. Type filtering for chips (PRD 12.3: hanya kategori bertipe sama) and fallback
+{
+  const DEFAULT_MASUK_CAT = {
+    id: 'masuk',
+    nama: 'Uang jajan',
+    ikon: '💰',
+    warna: 'masuk',
+    limit_mingguan: 145000,
+    tipe: 'masuk',
+    urut: 6
+  };
+
+  function getCurrentCategories(cats, tipe) {
+    const normType = (tipe || 'keluar').trim().toLowerCase();
+    const matching = (cats || []).filter(
+      (c) => (c.tipe || 'keluar').trim().toLowerCase() === normType
+    );
+    if (matching.length === 0 && normType === 'masuk') {
+      return [DEFAULT_MASUK_CAT];
+    }
+    return matching.slice().sort((a, b) => (a.urut || 0) - (b.urut || 0));
+  }
+
+  const keluarChips = getCurrentCategories(categories, 'keluar');
+  assert.equal(keluarChips.length, 4, 'Hanya 4 kategori keluar tampil');
+  assert.ok(keluarChips.every((c) => c.tipe === 'keluar'));
+
+  const masukChips = getCurrentCategories(categories, 'masuk');
+  assert.equal(masukChips.length, 1, 'Hanya 1 kategori masuk tampil');
+  assert.equal(masukChips[0].id, 'masuk');
+
+  const tabungChips = getCurrentCategories(categories, 'tabung');
+  assert.equal(tabungChips.length, 1, 'Hanya 1 kategori tabung tampil');
+  assert.equal(tabungChips[0].id, 'nabung');
+
+  // Fallback saat categories kosong
+  const fallbackMasuk = getCurrentCategories([], 'masuk');
+  assert.equal(fallbackMasuk.length, 1, 'Fallback kategori masuk aktif jika store kosong');
+  assert.equal(fallbackMasuk[0].nama, 'Uang jajan');
+  console.log('✓ Filter kategori bertipe sama dan fallback masuk diverifikasi');
+}
+
 console.log('--- ALL CATEGORY SELECTION TESTS PASSED! ---');

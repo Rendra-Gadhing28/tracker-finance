@@ -587,7 +587,12 @@
 
       <!-- Mini Stat Panels: Masuk, Keluar, Tabung -->
       <div class="hero-stats-grid">
-        <div class="hero-stat-box masuk">
+        <button
+          type="button"
+          class="hero-stat-box masuk interactive-tap"
+          onclick={() => txManager?.openCreate?.({ tipe: 'masuk' })}
+          aria-label="Catat transaksi pemasukan"
+        >
           <div class="stat-icon-label">
             <span class="stat-arrow down">↓</span>
             <span>Masuk</span>
@@ -595,9 +600,14 @@
           <span class="stat-value font-num tabular-nums">
             {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.masuk} />{/if}
           </span>
-        </div>
+        </button>
 
-        <div class="hero-stat-box keluar">
+        <button
+          type="button"
+          class="hero-stat-box keluar interactive-tap"
+          onclick={() => txManager?.openCreate?.({ tipe: 'keluar' })}
+          aria-label="Catat transaksi pengeluaran"
+        >
           <div class="stat-icon-label">
             <span class="stat-arrow up">↑</span>
             <span>Keluar</span>
@@ -605,9 +615,14 @@
           <span class="stat-value font-num tabular-nums">
             {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.keluar} />{/if}
           </span>
-        </div>
+        </button>
 
-        <div class="hero-stat-box tabung">
+        <button
+          type="button"
+          class="hero-stat-box tabung interactive-tap"
+          onclick={() => txManager?.openCreate?.({ tipe: 'tabung' })}
+          aria-label="Catat tabungan"
+        >
           <div class="stat-icon-label">
             <span class="stat-arrow piggy">🐷</span>
             <span>Tabung</span>
@@ -615,7 +630,7 @@
           <span class="stat-value font-num tabular-nums">
             {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.tabung} />{/if}
           </span>
-        </div>
+        </button>
       </div>
 
       <!-- Batas Harian / Daily Limit Meter Bar (Current week only) -->
@@ -1205,6 +1220,18 @@
     flex-direction: column;
     gap: 3px;
     box-sizing: border-box;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+  }
+
+  .hero-stat-box:hover {
+    background: var(--glass-2);
+  }
+
+  .hero-stat-box:active {
+    transform: scale(0.97);
   }
 
   .hero-stat-box.masuk {
