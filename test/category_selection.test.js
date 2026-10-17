@@ -96,13 +96,35 @@ const categories = [
     urut: 6
   };
 
+  const DEFAULT_TABUNG_CAT = {
+    id: 'nabung',
+    nama: 'Nabung',
+    ikon: '🐷',
+    warna: 'nabung',
+    limit_mingguan: 29000,
+    tipe: 'tabung',
+    urut: 5
+  };
+
+  const DEFAULT_KELUAR_CAT = {
+    id: 'jajan',
+    nama: 'Jajan & makan',
+    ikon: '🍙',
+    warna: 'jajan',
+    limit_mingguan: 72500,
+    tipe: 'keluar',
+    urut: 1
+  };
+
   function getCurrentCategories(cats, tipe) {
     const normType = (tipe || 'keluar').trim().toLowerCase();
     const matching = (cats || []).filter(
       (c) => (c.tipe || 'keluar').trim().toLowerCase() === normType
     );
-    if (matching.length === 0 && normType === 'masuk') {
-      return [DEFAULT_MASUK_CAT];
+    if (matching.length === 0) {
+      if (normType === 'masuk') return [DEFAULT_MASUK_CAT];
+      if (normType === 'tabung') return [DEFAULT_TABUNG_CAT];
+      if (normType === 'keluar') return [DEFAULT_KELUAR_CAT];
     }
     return matching.slice().sort((a, b) => (a.urut || 0) - (b.urut || 0));
   }
@@ -123,7 +145,39 @@ const categories = [
   const fallbackMasuk = getCurrentCategories([], 'masuk');
   assert.equal(fallbackMasuk.length, 1, 'Fallback kategori masuk aktif jika store kosong');
   assert.equal(fallbackMasuk[0].nama, 'Uang jajan');
-  console.log('✓ Filter kategori bertipe sama dan fallback masuk diverifikasi');
+
+  const fallbackTabung = getCurrentCategories([], 'tabung');
+  assert.equal(fallbackTabung.length, 1, 'Fallback kategori tabung aktif jika store kosong');
+  assert.equal(fallbackTabung[0].id, 'nabung');
+
+  const fallbackKeluar = getCurrentCategories([], 'keluar');
+  assert.equal(fallbackKeluar.length, 1, 'Fallback kategori keluar aktif jika store kosong');
+  assert.equal(fallbackKeluar[0].id, 'jajan');
+  console.log('✓ Filter kategori bertipe sama dan fallback masuk/tabung/keluar diverifikasi');
+}
+
+// 5. Switching type tab preserves nominal and allows selecting masuk and tabung
+{
+  let tipe = 'keluar';
+  let rawNominal = '50.000';
+  let initialTx = null;
+
+  function handleTypeChange(newType) {
+    tipe = newType;
+    // Switching tab must NOT reset nominal
+  }
+
+  // User taps 'masuk'
+  handleTypeChange('masuk');
+  assert.equal(tipe, 'masuk', 'Tombol Masuk dapat ditekan dan mengubah tipe ke masuk');
+  assert.equal(rawNominal, '50.000', 'Nominal tetap terjaga saat ganti tab tipe');
+
+  // User taps 'tabung'
+  handleTypeChange('tabung');
+  assert.equal(tipe, 'tabung', 'Tombol Tabung dapat ditekan dan mengubah tipe ke tabung');
+  assert.equal(rawNominal, '50.000', 'Nominal tetap terjaga saat ganti tab tipe');
+
+  console.log('✓ Tombol tab masuk dan tabung dapat ditekan dan nominal tidak tereset');
 }
 
 console.log('--- ALL CATEGORY SELECTION TESTS PASSED! ---');

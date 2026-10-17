@@ -266,7 +266,9 @@
   function openCreate(preset = null) {
     txSheetMode = 'create';
     if (preset) {
-      activeTx = preset;
+      activeTx = activeWeekDate && !preset.tanggal
+        ? { ...preset, tanggal: activeWeekDate }
+        : { ...preset };
     } else if (activeWeekDate) {
       activeTx = { tanggal: activeWeekDate };
     } else {

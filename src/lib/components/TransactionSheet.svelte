@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import BottomSheet from './BottomSheet.svelte';
   import Button from './Button.svelte';
   import Chip from './Chip.svelte';
@@ -58,14 +59,36 @@
     urut: 6
   };
 
+  const DEFAULT_TABUNG_CAT = {
+    id: 'nabung',
+    nama: 'Nabung',
+    ikon: '🐷',
+    warna: 'nabung',
+    limit_mingguan: 29000,
+    tipe: 'tabung',
+    urut: 5
+  };
+
+  const DEFAULT_KELUAR_CAT = {
+    id: 'jajan',
+    nama: 'Jajan & makan',
+    ikon: '🍙',
+    warna: 'jajan',
+    limit_mingguan: 72500,
+    tipe: 'keluar',
+    urut: 1
+  };
+
   // Categories for active type, sorted by urut (PRD 12.3: hanya kategori bertipe sama)
   const currentCategories = $derived.by(() => {
     const normType = (tipe || 'keluar').trim().toLowerCase();
     const matching = (categories || []).filter(
       (c) => (c.tipe || 'keluar').trim().toLowerCase() === normType
     );
-    if (matching.length === 0 && normType === 'masuk') {
-      return [DEFAULT_MASUK_CAT];
+    if (matching.length === 0) {
+      if (normType === 'masuk') return [DEFAULT_MASUK_CAT];
+      if (normType === 'tabung') return [DEFAULT_TABUNG_CAT];
+      if (normType === 'keluar') return [DEFAULT_KELUAR_CAT];
     }
     return matching.slice().sort((a, b) => (a.urut || 0) - (b.urut || 0));
   });
@@ -95,8 +118,10 @@
     let matchingCats = (categories || []).filter(
       (c) => (c.tipe || '').trim().toLowerCase() === normTarget
     );
-    if (matchingCats.length === 0 && normTarget === 'masuk') {
-      matchingCats = [DEFAULT_MASUK_CAT];
+    if (matchingCats.length === 0) {
+      if (normTarget === 'masuk') matchingCats = [DEFAULT_MASUK_CAT];
+      else if (normTarget === 'tabung') matchingCats = [DEFAULT_TABUNG_CAT];
+      else if (normTarget === 'keluar') matchingCats = [DEFAULT_KELUAR_CAT];
     }
     if (matchingCats.length === 0) return '';
 
@@ -153,7 +178,7 @@
   });
 
   function getDefaultGoalId() {
-    if (initialTx?.goal_id) return initialTx.goal_id;
+    if (initialTx && 'goal_id' in initialTx) return initialTx.goal_id || '';
     // Check last used tabung transaction
     const lastTabungTx = (transactions || []).find((t) => t.tipe === 'tabung' && t.goal_id);
     if (lastTabungTx?.goal_id && unreachedGoals.some((g) => g.id === lastTabungTx.goal_id)) {
@@ -200,62 +225,72 @@
     return null;
   });
 
-  // Synchronize state when sheet opens or initialTx changes
+  let wasOpen = false;
+  let lastInitialTx = null;
+
+  // Synchronize state only when sheet opens or initialTx changes
   $effect(() => {
-    if (open) {
-      if (mode === 'edit' && initialTx) {
-        tipe = initialTx.tipe || 'keluar';
-        kategoriId = initialTx.kategori_id || '';
-        goalId = initialTx.goal_id || '';
-        rawNominal = (Number(initialTx.nominal) || 0).toLocaleString('id-ID');
-        catatan = initialTx.catatan || '';
-        showCatatan = !!catatan;
+    const isOpening = open && !wasOpen;
+    const initialTxChanged = open && initialTx !== lastInitialTx;
+    wasOpen = open;
+    lastInitialTx = initialTx;
 
-        // Parse date for edit mode
-        const txParts = getWIBParts(initialTx.tanggal || new Date());
-        const pad = (n) => String(n).padStart(2, '0');
-        const txDateStr = `${txParts.year}-${pad(txParts.month + 1)}-${pad(txParts.date)}`;
-        if (txDateStr === todayISO) {
-          dateOption = 'today';
-        } else {
-          dateOption = 'custom';
-          customDateVal = txDateStr;
-        }
-        scrollToSelectedChip();
-      } else {
-        // Create mode
-        if (initialTx?.kategori_id) {
-          kategoriId = initialTx.kategori_id;
-          const matchingCat = (categories || []).find((c) => c.id === kategoriId);
-          tipe = matchingCat?.tipe || initialTx?.tipe || 'keluar';
-        } else {
-          tipe = initialTx?.tipe || 'keluar';
-          kategoriId = getLastUsedCategoryId(tipe);
-        }
+    if (isOpening || initialTxChanged) {
+      untrack(() => {
+        if (mode === 'edit' && initialTx) {
+          tipe = initialTx.tipe || 'keluar';
+          kategoriId = initialTx.kategori_id || '';
+          goalId = initialTx.goal_id || '';
+          rawNominal = (Number(initialTx.nominal) || 0).toLocaleString('id-ID');
+          catatan = initialTx.catatan || '';
+          showCatatan = !!catatan;
 
-        goalId = getDefaultGoalId();
-
-        rawNominal = '';
-        catatan = '';
-        showCatatan = false;
-
-        if (initialTx?.tanggal) {
-          const txParts = getWIBParts(initialTx.tanggal);
+          // Parse date for edit mode
+          const txParts = getWIBParts(initialTx.tanggal || new Date());
           const pad = (n) => String(n).padStart(2, '0');
           const txDateStr = `${txParts.year}-${pad(txParts.month + 1)}-${pad(txParts.date)}`;
           if (txDateStr === todayISO) {
             dateOption = 'today';
-            customDateVal = todayISO;
           } else {
             dateOption = 'custom';
             customDateVal = txDateStr;
           }
+          scrollToSelectedChip();
         } else {
-          dateOption = 'today';
-          customDateVal = todayISO;
+          // Create mode
+          if (initialTx?.kategori_id) {
+            kategoriId = initialTx.kategori_id;
+            const matchingCat = (categories || []).find((c) => c.id === kategoriId);
+            tipe = matchingCat?.tipe || initialTx?.tipe || 'keluar';
+          } else {
+            tipe = initialTx?.tipe || 'keluar';
+            kategoriId = getLastUsedCategoryId(tipe);
+          }
+
+          goalId = getDefaultGoalId();
+
+          rawNominal = '';
+          catatan = '';
+          showCatatan = false;
+
+          if (initialTx?.tanggal) {
+            const txParts = getWIBParts(initialTx.tanggal);
+            const pad = (n) => String(n).padStart(2, '0');
+            const txDateStr = `${txParts.year}-${pad(txParts.month + 1)}-${pad(txParts.date)}`;
+            if (txDateStr === todayISO) {
+              dateOption = 'today';
+              customDateVal = todayISO;
+            } else {
+              dateOption = 'custom';
+              customDateVal = txDateStr;
+            }
+          } else {
+            dateOption = 'today';
+            customDateVal = todayISO;
+          }
+          scrollToSelectedChip();
         }
-        scrollToSelectedChip();
-      }
+      });
     }
   });
 
@@ -264,7 +299,7 @@
     if (currentCategories.length > 0) {
       const exists = currentCategories.some((c) => c.id === kategoriId);
       if (!exists) {
-        kategoriId = getLastUsedCategoryId(tipe) || currentCategories[0].id;
+        kategoriId = untrack(() => getLastUsedCategoryId(tipe)) || currentCategories[0].id;
       }
     } else {
       kategoriId = '';
