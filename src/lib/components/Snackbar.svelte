@@ -62,50 +62,47 @@
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 32px);
-    max-width: 416px;
-    background: rgba(8, 14, 22, 0.95);
-    color: var(--komorebi);
-    border: 1px solid var(--edge-bright);
-    border-radius: var(--radius-chip, 999px);
+    max-width: 480px;
+    background: var(--fg);
+    color: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
     padding: 12px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     z-index: 95;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), var(--glow-aether);
+    box-shadow: none;
     box-sizing: border-box;
-    animation: snackbarSlideUp 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: snackbarSlideUp 180ms var(--ease) forwards;
   }
 
   .snackbar-message {
-    font-size: 14px;
+    font-size: var(--fs-sm, 14px);
     font-weight: 500;
     line-height: 1.2;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--komorebi);
+    color: var(--bg);
   }
 
   .snackbar-action-btn {
     border: none;
     background: transparent;
-    color: var(--bara);
+    color: var(--accent);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--fs-sm, 14px);
     cursor: pointer;
     padding: 4px 8px;
     flex-shrink: 0;
-    border-radius: 8px;
-    transition: transform 100ms ease-out, color 150ms ease-out;
+    border-radius: var(--r-bar, 4px);
+    transition: opacity 120ms var(--ease);
   }
 
   .snackbar-action-btn:active {
-    transform: scale(0.95);
-    color: var(--komorebi);
+    opacity: 0.8;
   }
 
   @keyframes snackbarSlideUp {

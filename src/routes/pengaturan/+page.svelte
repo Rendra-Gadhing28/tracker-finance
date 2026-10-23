@@ -14,6 +14,17 @@
     saveSetting
   } from '$lib/stores';
   import { formatRp, parseRp } from '$lib/money';
+  import { setTheme, getTheme } from '$lib/theme.js';
+
+  let currentTheme = $state('system');
+  $effect(() => {
+    currentTheme = getTheme();
+  });
+
+  function handleThemeChange(t) {
+    currentTheme = t;
+    setTheme(t);
+  }
 
   // Category sheet state
   let isCategorySheetOpen = $state(false);
@@ -352,6 +363,39 @@
           </button>
         </div>
 
+        <!-- Tema Tampilan -->
+        <div class="setting-item">
+          <div class="setting-text">
+            <span class="setting-label">Tema tampilan</span>
+          </div>
+          <div class="theme-toggle-group">
+            <button
+              type="button"
+              class="theme-chip"
+              class:active={currentTheme === 'system'}
+              onclick={() => handleThemeChange('system')}
+            >
+              Sistem
+            </button>
+            <button
+              type="button"
+              class="theme-chip"
+              class:active={currentTheme === 'light'}
+              onclick={() => handleThemeChange('light')}
+            >
+              Terang
+            </button>
+            <button
+              type="button"
+              class="theme-chip"
+              class:active={currentTheme === 'dark'}
+              onclick={() => handleThemeChange('dark')}
+            >
+              Gelap
+            </button>
+          </div>
+        </div>
+
         <!-- Sambungan Sheet -->
         <div class="setting-item">
           <div class="setting-text">
@@ -500,23 +544,23 @@
     font-family: var(--font-display);
     font-size: 22px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     letter-spacing: -0.02em;
     margin: 0;
   }
 
   .skipped-rows-pill {
-    background-color: rgba(217, 119, 6, 0.10);
-    border: 1px solid var(--bara);
-    border-radius: 14px;
+    background-color: var(--bg-raised);
+    border: 1px solid var(--warn);
+    border-radius: var(--r, 10px);
     padding: 8px 14px;
     font-size: 13px;
-    font-weight: 700;
-    color: var(--bara);
+    font-weight: 600;
+    color: var(--warn);
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: var(--glow-bara);
+    box-shadow: none;
   }
 
   /* Uang Jajan Card */
@@ -535,44 +579,44 @@
   .uj-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .uj-amount {
     font-size: 26px;
-    font-weight: 800;
-    color: var(--komorebi);
+    font-weight: 700;
+    color: var(--fg);
     margin-top: 2px;
     letter-spacing: -0.02em;
   }
 
   .alloc-bar-track {
     width: 100%;
-    height: 10px;
-    background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    height: 8px;
+    background-color: var(--track);
+    border-radius: var(--r-bar, 4px);
     overflow: hidden;
   }
 
   .alloc-bar-fill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: var(--r-bar, 4px);
     transition: background-color 240ms ease-out;
   }
 
   .alloc-bar-fill.status-equal {
-    background-color: var(--tunas);
-    box-shadow: var(--glow-tunas);
+    background-color: var(--accent);
+    box-shadow: none;
   }
 
   .alloc-bar-fill.status-less {
-    background-color: var(--bara);
-    box-shadow: var(--glow-bara);
+    background-color: var(--warn);
+    box-shadow: none;
   }
 
   .alloc-bar-fill.status-more {
-    background-color: var(--api);
-    box-shadow: var(--glow-api);
+    background-color: var(--expense);
+    box-shadow: none;
   }
 
   .alloc-status-row {
@@ -582,19 +626,19 @@
 
   .alloc-text {
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   .alloc-text.status-equal {
-    color: var(--tunas);
+    color: var(--accent);
   }
 
   .alloc-text.status-less {
-    color: var(--bara);
+    color: var(--warn);
   }
 
   .alloc-text.status-more {
-    color: var(--api);
+    color: var(--expense);
   }
 
   /* Categories Section */
@@ -614,7 +658,7 @@
     font-family: var(--font-display);
     font-size: 12px;
     font-weight: 700;
-    color: var(--kabut);
+    color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding-left: 4px;
@@ -624,9 +668,9 @@
   .cat-list {
     display: flex;
     flex-direction: column;
-    background: var(--glass-1);
-    border-radius: 20px;
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
     overflow: hidden;
   }
 
@@ -637,7 +681,7 @@
     padding: 12px 14px;
     border: none;
     background: transparent;
-    border-bottom: 1px solid var(--edge-soft);
+    border-bottom: 1px solid var(--line);
     cursor: pointer;
     font-family: inherit;
     text-align: left;
@@ -651,7 +695,7 @@
   }
 
   .cat-row:hover, .cat-row:active {
-    background-color: var(--glass-2);
+    background-color: var(--line);
   }
 
   .cat-left {
@@ -663,20 +707,20 @@
   .cat-badge {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: var(--r-bar, 4px);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 1.5px solid var(--edge-soft);
-    background: var(--glass-2);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
     flex-shrink: 0;
   }
 
   .cat-name {
     font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .cat-right {
@@ -688,26 +732,26 @@
   .cat-limit {
     font-family: var(--font-display);
     font-size: 13px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
   }
 
   .cat-limit.tipe-keluar {
-    color: var(--api);
+    color: var(--expense);
   }
 
   .cat-limit.tipe-tabung {
-    color: var(--bara);
+    color: var(--warn);
   }
 
   .cat-limit.tipe-masuk {
-    color: var(--tunas);
+    color: var(--accent);
   }
 
   .chevron {
     font-size: 18px;
-    color: var(--kabut);
-    font-weight: 700;
+    color: var(--fg-muted);
+    font-weight: 600;
   }
 
   .new-cat-btn-wrap {
@@ -725,7 +769,7 @@
     font-family: var(--font-display);
     font-size: 12px;
     font-weight: 700;
-    color: var(--kabut);
+    color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding-left: 4px;
@@ -743,7 +787,7 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 10px;
-    border-bottom: 1px dashed var(--edge-soft);
+    border-bottom: 1px solid var(--line);
   }
 
   .setting-item:last-child {
@@ -759,30 +803,57 @@
 
   .setting-label {
     font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .setting-subnote {
     font-size: 12px;
-    color: var(--kabut);
+    color: var(--fg-muted);
+  }
+
+  .theme-toggle-group {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    padding: 3px;
+  }
+
+  .theme-chip {
+    border: none;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 120ms var(--ease), color 120ms var(--ease);
+  }
+
+  .theme-chip.active {
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 600;
   }
 
   .select-control {
     padding: 6px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--edge-soft);
-    background-color: var(--glass-2);
-    color: var(--komorebi);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background-color: var(--bg-raised);
+    color: var(--fg);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
   }
 
   .select-control:focus {
     outline: none;
-    border-color: var(--aether);
-    box-shadow: var(--glow-aether);
+    border-color: var(--accent);
+    box-shadow: none;
   }
 
   .setting-btn-link {
@@ -791,16 +862,16 @@
     gap: 6px;
     background: transparent;
     border: none;
-    color: var(--aether);
+    color: var(--accent);
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     text-decoration: none;
     padding: 4px 0;
   }
 
   .setting-btn-link:hover {
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   /* Quick Edit Modal / Sheet Forms */
@@ -818,8 +889,8 @@
 
   label {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .input-with-prefix {
@@ -832,8 +903,8 @@
     position: absolute;
     left: 14px;
     font-size: 14px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
     pointer-events: none;
   }
 
@@ -841,10 +912,10 @@
     width: 100%;
     min-height: 44px;
     padding: 10px 14px 10px 42px;
-    border-radius: 14px;
-    border: 1px solid var(--edge-soft);
-    background-color: var(--glass-1);
-    color: var(--komorebi);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background-color: var(--bg-raised);
+    color: var(--fg);
     font-family: var(--font-display);
     font-size: 16px;
     box-sizing: border-box;
@@ -852,17 +923,17 @@
   }
 
   .input-with-prefix input:focus {
-    border-color: var(--aether);
-    background-color: var(--glass-2);
+    border-color: var(--accent);
+    background-color: var(--bg-raised);
     outline: none;
-    box-shadow: var(--glow-aether);
+    box-shadow: none;
   }
 
   .input-preview {
     font-family: var(--font-display);
     font-size: 13px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
   }
 
   .modal-actions {

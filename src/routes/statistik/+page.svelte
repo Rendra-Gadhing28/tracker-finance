@@ -386,9 +386,9 @@
 
   .segmented-control {
     display: flex;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--edge-soft);
-    border-radius: 14px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
     padding: 3px;
     gap: 4px;
   }
@@ -402,19 +402,19 @@
     min-height: 38px;
     border: none;
     background: transparent;
-    border-radius: 11px;
+    border-radius: var(--r-bar, 4px);
     font-size: 13px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
     cursor: pointer;
     transition: all 140ms ease;
   }
 
   .seg-btn.active {
-    background: var(--glass-3);
-    color: var(--komorebi);
-    border: 1px solid var(--edge-bright);
-    box-shadow: 0 0 10px rgba(59, 154, 184, 0.15);
+    background: var(--fg);
+    color: var(--bg);
+    border: 1px solid var(--fg);
+    box-shadow: none;
   }
 
   .period-navigator {
@@ -427,11 +427,11 @@
   .period-nav-arrow {
     position: relative;
     border: none;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     font-size: 22px;
     line-height: 1;
-    color: var(--komorebi);
+    color: var(--fg);
     cursor: pointer;
     width: 36px;
     height: 36px;
@@ -449,12 +449,12 @@
   }
 
   .period-nav-arrow:hover {
-    background: var(--glass-2);
-    border-color: var(--edge-bright);
+    background: var(--line);
+    border-color: var(--line);
   }
 
   .period-nav-arrow:active {
-    transform: scale(0.94);
+    opacity: 0.8;
   }
 
   .period-nav-arrow:disabled {
@@ -466,7 +466,7 @@
   .period-title {
     font-size: 15px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   /* 2. Donut Card */
@@ -474,7 +474,7 @@
     display: flex;
     justify-content: center;
     padding: 14px 10px;
-    border-radius: 22px;
+    border-radius: var(--r, 10px);
   }
 
   /* 3. Insights Box */
@@ -482,11 +482,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: rgba(59, 154, 184, 0.08);
-    border: 1px solid rgba(59, 154, 184, 0.22);
-    border-radius: 18px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
     padding: 12px 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    box-shadow: none;
   }
 
   .insight-row {
@@ -496,15 +496,15 @@
   }
 
   .insight-sparkle {
-    color: var(--aether);
+    color: var(--accent);
     font-size: 14px;
-    text-shadow: 0 0 8px rgba(59, 154, 184, 0.25);
+    text-shadow: none;
   }
 
   .insight-text {
     font-size: 13px;
-    font-weight: 600;
-    color: var(--komorebi);
+    font-weight: 500;
+    color: var(--fg);
     line-height: 1.45;
   }
 
@@ -519,7 +519,7 @@
     font-family: var(--font-display);
     font-size: 15px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     padding-left: 2px;
     margin: 0;
   }
@@ -546,9 +546,8 @@
   }
 
   .cat-row-card.selected-row {
-    border-color: var(--aether);
-    box-shadow: var(--glow-aether);
-    transform: scale(1.01);
+    border-color: var(--accent);
+    box-shadow: none;
   }
 
   .cat-row-top {
@@ -575,25 +574,25 @@
 
   .cat-name {
     font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .selisih-label {
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   .selisih-label.hemat {
-    color: var(--tunas);
+    color: var(--accent);
   }
 
   .selisih-label.lewat {
-    color: var(--api);
+    color: var(--expense);
   }
 
   .selisih-label.pas {
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .cat-figures {
@@ -604,37 +603,37 @@
 
   .cat-amount {
     font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
     letter-spacing: -0.01em;
   }
 
   .cat-pct {
     font-size: 12px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
   }
 
   .cat-bar-track {
     width: 100%;
     height: 8px;
-    background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    background-color: var(--track);
+    border-radius: var(--r-bar, 4px);
     overflow: hidden;
   }
 
   .cat-bar-fill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: var(--r-bar, 4px);
   }
 
   /* Unfolded transactions */
   .unfolded-txs-container {
-    background: rgba(8, 14, 22, 0.88);
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     border-top: none;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
+    border-bottom-left-radius: var(--r, 10px);
+    border-bottom-right-radius: var(--r, 10px);
     padding: 10px 14px;
     display: flex;
     flex-direction: column;
@@ -644,8 +643,8 @@
 
   .unfolded-header {
     font-size: 11px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
   }
 
   .unfolded-items {
@@ -660,53 +659,53 @@
     justify-content: space-between;
     font-size: 12px;
     padding: 6px 10px;
-    border-radius: 10px;
-    background-color: var(--glass-1);
+    border-radius: var(--r-bar, 4px);
+    background-color: transparent;
     border: 1px solid transparent;
     cursor: pointer;
     transition: all 120ms ease;
   }
 
   .unfolded-item:hover, .unfolded-item:active {
-    background-color: var(--glass-2);
-    border-color: var(--edge-soft);
+    background-color: var(--line);
+    border-color: var(--line);
   }
 
   .tx-note {
-    color: var(--komorebi);
+    color: var(--fg);
     font-weight: 500;
   }
 
   .tx-val {
-    color: var(--komorebi);
-    font-weight: 700;
+    color: var(--fg);
+    font-weight: 600;
   }
 
   .btn-see-all {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
+    background: transparent;
+    border: 1px solid var(--line);
     padding: 6px 14px;
     font-family: inherit;
     font-size: 12px;
-    font-weight: 700;
-    color: var(--aether);
+    font-weight: 600;
+    color: var(--accent);
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: var(--r, 10px);
     margin-top: 4px;
     align-self: center;
-    transition: all 120ms ease;
+    transition: opacity 120ms ease;
   }
 
   .btn-see-all:hover {
-    background: var(--glass-2);
-    border-color: var(--edge-bright);
+    background: var(--line);
+    border-color: var(--line);
   }
 
   .btn-see-all:active {
-    transform: scale(0.96);
+    opacity: 0.8;
   }
 
   /* 5. Daily Spending Bars */
@@ -726,13 +725,13 @@
 
   .average-hint {
     font-size: 11px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     font-weight: 500;
   }
 
   .daily-bars-card {
     padding: 20px 14px 14px;
-    border-radius: 22px;
+    border-radius: var(--r, 10px);
   }
 
   .bars-container {
@@ -748,10 +747,10 @@
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1.5px dashed var(--bara);
+    border-top: 1.5px dashed var(--warn);
     z-index: 1;
     pointer-events: none;
-    opacity: 0.5;
+    opacity: 0.6;
   }
 
   .bar-column {
@@ -777,26 +776,26 @@
     height: calc(100% - 24px);
     display: flex;
     align-items: flex-end;
-    background-color: rgba(255, 255, 255, 0.06);
-    border-radius: 999px;
+    background-color: var(--track);
+    border-radius: var(--r-bar, 4px);
   }
 
   .bar-pillar {
     width: 100%;
-    background: linear-gradient(180deg, var(--aether) 0%, rgba(59, 154, 184, 0.5) 100%);
-    box-shadow: 0 0 8px rgba(59, 154, 184, 0.15);
-    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: none;
+    border-radius: var(--r-bar, 4px);
   }
 
   .bar-pillar.over {
-    background: linear-gradient(180deg, var(--api) 0%, #991B1B 100%);
-    box-shadow: var(--glow-api);
+    background: var(--expense);
+    box-shadow: none;
   }
 
   .bar-label {
     font-size: 11px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
     line-height: 1;
   }
 
@@ -805,16 +804,16 @@
     bottom: calc(100% + 4px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(8, 14, 22, 0.95);
-    border: 1px solid var(--edge-bright);
-    color: var(--komorebi);
-    font-family: var(--font-display);
+    background: var(--fg);
+    border: 1px solid var(--line);
+    color: var(--bg);
+    font-family: var(--font-ui);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 4px 8px;
-    border-radius: 8px;
+    border-radius: var(--r-bar, 4px);
     white-space: nowrap;
     z-index: 10;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    box-shadow: none;
   }
 </style>

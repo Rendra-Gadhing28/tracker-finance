@@ -371,11 +371,11 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(59, 154, 184, 0.12);
-    border: 1px solid var(--aether);
-    border-radius: 20px;
+    background: var(--bg-raised);
+    border: 1px solid var(--accent);
+    border-radius: var(--r, 10px);
     padding: 12px 16px;
-    box-shadow: var(--glow-aether);
+    box-shadow: none;
     animation: banner-jump 450ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
@@ -406,19 +406,19 @@
     font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   .celebration-sub {
     font-size: 11px;
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .close-banner-btn {
     background: transparent;
     border: none;
     font-size: 14px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
@@ -439,12 +439,12 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    border-radius: 50%;
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--komorebi);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg);
     cursor: pointer;
-    transition: all 120ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .back-btn::before {
@@ -454,12 +454,12 @@
   }
 
   .back-btn:hover {
-    background: var(--glass-2);
-    border-color: var(--edge-bright);
+    background: var(--line);
+    border-color: var(--line);
   }
 
   .back-btn:active {
-    transform: scale(0.94);
+    opacity: 0.8;
   }
 
   .header-center {
@@ -472,7 +472,7 @@
     font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -489,21 +489,21 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    border-radius: 50%;
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--kabut);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg-muted);
     cursor: pointer;
-    transition: all 120ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .menu-trigger-btn:hover {
-    color: var(--komorebi);
-    border-color: var(--edge-bright);
+    color: var(--fg);
+    border-color: var(--line);
   }
 
   .menu-trigger-btn:active {
-    transform: scale(0.94);
+    opacity: 0.8;
   }
 
   .menu-backdrop {
@@ -517,10 +517,12 @@
     top: 46px;
     right: 0;
     z-index: 50;
-    border-radius: 16px;
+    border-radius: var(--r, 10px);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     min-width: 170px;
     padding: 6px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -531,23 +533,23 @@
     align-items: center;
     gap: 8px;
     padding: 9px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-bar, 4px);
     border: none;
     background: transparent;
     font-size: 13px;
     font-weight: 600;
-    color: var(--komorebi);
+    color: var(--fg);
     text-align: left;
     cursor: pointer;
     transition: background 120ms ease;
   }
 
   .menu-item:hover, .menu-item:active {
-    background: var(--glass-3);
+    background: var(--line);
   }
 
   .menu-item.danger {
-    color: var(--api);
+    color: var(--expense);
   }
 
   /* Vault Hero Card */
@@ -557,22 +559,22 @@
     align-items: center;
     text-align: center;
     padding: 24px 18px;
-    border-radius: 28px;
+    border-radius: var(--r, 10px);
     gap: 12px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    box-shadow: none;
   }
 
   .hero-icon-circle {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-bright);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 30px;
-    box-shadow: var(--glow-aether);
+    box-shadow: none;
   }
 
   .hero-main-stats {
@@ -585,42 +587,42 @@
   .hero-pct {
     font-size: 13px;
     font-weight: 700;
-    color: var(--aether);
-    background: rgba(59, 154, 184, 0.10);
-    border: 1px solid rgba(59, 154, 184, 0.25);
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--line);
     padding: 2px 10px;
-    border-radius: 999px;
+    border-radius: var(--r, 10px);
   }
 
   .hero-collected-amount {
     font-family: var(--font-display);
     font-size: 30px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     letter-spacing: -0.02em;
     margin: 4px 0 0;
   }
 
   .hero-target-denom {
     font-size: 12px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     font-weight: 500;
   }
 
   .hero-progress-track {
     width: 100%;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    height: 8px;
+    background: var(--track);
+    border-radius: var(--r-bar, 4px);
     overflow: hidden;
     margin-top: 4px;
   }
 
   .hero-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--aether) 0%, #2B8A9E 100%);
-    box-shadow: var(--glow-aether);
-    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: none;
+    border-radius: var(--r-bar, 4px);
   }
 
   /* Quick Deposit Section */
@@ -628,10 +630,10 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
-    border-radius: 22px;
-    padding: 14px 16px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    padding: 16px;
   }
 
   .deposit-header-row {
@@ -644,12 +646,12 @@
     font-family: var(--font-display);
     font-size: 13px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   .deposit-sub {
     font-size: 11px;
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .chips-row {
@@ -669,12 +671,12 @@
     flex: 1;
     min-height: 38px;
     padding: 6px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--kabut);
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg-muted);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     transition: all 120ms ease;
     white-space: nowrap;
@@ -682,15 +684,15 @@
   }
 
   .quick-chip:hover {
-    color: var(--komorebi);
-    border-color: var(--edge-bright);
+    color: var(--fg);
+    border-color: var(--line);
   }
 
   .quick-chip.selected {
-    background: rgba(59, 154, 184, 0.16);
-    border-color: var(--aether);
-    color: var(--komorebi);
-    box-shadow: var(--glow-aether);
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+    box-shadow: none;
   }
 
   .deposit-actions {
@@ -704,18 +706,18 @@
     border: none;
     font-family: var(--font-ui);
     font-size: 14px;
-    font-weight: 700;
-    color: #FFFFFF;
-    background: linear-gradient(135deg, var(--aether) 0%, #2B8A9E 100%);
-    box-shadow: var(--glow-aether);
-    border-radius: 14px;
+    font-weight: 600;
+    color: var(--on-accent);
+    background: var(--accent);
+    box-shadow: none;
+    border-radius: var(--r, 10px);
     padding: 12px 18px;
     cursor: pointer;
-    transition: transform 120ms ease, opacity 120ms ease;
+    transition: opacity 120ms ease;
   }
 
   .deposit-submit-btn:active {
-    transform: scale(0.98);
+    opacity: 0.85;
   }
 
   .deposit-submit-btn:disabled {
@@ -725,20 +727,20 @@
   }
 
   .deposit-custom-btn {
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--komorebi);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--fg);
     font-size: 13px;
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: var(--r, 10px);
     padding: 8px 14px;
     cursor: pointer;
     transition: all 120ms ease;
   }
 
   .deposit-custom-btn:hover {
-    background: var(--glass-2);
-    border-color: var(--edge-bright);
+    background: var(--line);
+    border-color: var(--line);
   }
 
   /* Riwayat Setoran */
@@ -752,19 +754,19 @@
     font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     margin: 0;
   }
 
   .history-empty {
     padding: 24px 16px;
     text-align: center;
-    border-radius: 18px;
+    border-radius: var(--r, 10px);
   }
 
   .history-empty-text {
     font-size: 13px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     margin: 0;
   }
 
@@ -779,14 +781,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    border-radius: 14px;
+    border-radius: var(--r, 10px);
     cursor: pointer;
-    transition: transform 120ms ease, border-color 120ms ease;
+    transition: opacity 120ms ease;
   }
 
   .history-row:active {
-    transform: scale(0.985);
-    border-color: var(--edge-bright);
+    opacity: 0.85;
+    border-color: var(--line);
   }
 
   .history-info {
@@ -799,13 +801,13 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 15px;
-    box-shadow: 0 0 10px rgba(59, 154, 184, 0.12);
+    box-shadow: none;
   }
 
   .history-details {
@@ -816,20 +818,20 @@
 
   .history-label {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .history-date {
     font-size: 11px;
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .history-amount {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--aether);
-    text-shadow: 0 0 10px rgba(59, 154, 184, 0.15);
+    font-weight: 600;
+    color: var(--accent);
+    text-shadow: none;
   }
 
   /* Not Found */
@@ -839,7 +841,7 @@
     align-items: center;
     text-align: center;
     padding: 36px 20px;
-    border-radius: 24px;
+    border-radius: var(--r, 10px);
     gap: 10px;
   }
 
@@ -851,13 +853,13 @@
     font-family: var(--font-display);
     font-size: 17px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     margin: 0;
   }
 
   .not-found-desc {
     font-size: 13px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     margin: 0;
   }
 </style>

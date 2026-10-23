@@ -1,5 +1,7 @@
 <script>
   import '../app.css';
+  import '@fontsource-variable/fraunces';
+  import '@fontsource-variable/dm-sans';
   import '@fontsource-variable/unbounded';
   import '@fontsource-variable/plus-jakarta-sans';
   import '@fontsource-variable/jetbrains-mono';
@@ -387,10 +389,9 @@
 
   const navItems = [
     { href: '/', label: 'Beranda', id: 'beranda' },
-    { href: '/statistik', label: 'Statistik', id: 'statistik' },
-    { action: 'tambah', label: 'Catat', id: 'catat' },
-    { href: '/tabungan', label: 'Tabungan', id: 'tabungan' },
-    { href: '/pengaturan', label: 'Atur', id: 'pengaturan' }
+    { href: '/statistik', label: 'Insight', id: 'statistik' },
+    { href: '/tabungan', label: 'Anggaran', id: 'tabungan' },
+    { href: '/pengaturan', label: 'Pengaturan', id: 'pengaturan' }
   ];
 
   const tabIndexMap = {
@@ -486,65 +487,58 @@
       </main>
     {/if}
 
-    <!-- Floating Bottom Dock Nav -->
+    <!-- Floating Action Button (FAB) Tambah (+) di atas nav -->
+    <button
+      type="button"
+      class="fab-tambah"
+      onclick={() => openCreate(null)}
+      aria-label="Tambah Transaksi"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      <span class="fab-label">Tambah</span>
+    </button>
+
+    <!-- Bottom Nav 4 item -->
     <nav class="bottom-dock" aria-label="Navigasi Utama">
       <div class="dock-inner">
         {#each navItems as item}
-          {#if item.action === 'tambah'}
-            <div class="dock-center-wrapper">
-              <button
-                type="button"
-                class="dock-btn-catat interactive-tap"
-                onclick={() => openCreate(null)}
-                aria-label="Catat Transaksi"
-              >
-                <span class="catat-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </span>
-              </button>
-            </div>
-          {:else}
-            <a
-              href={item.href}
-              class="dock-tab interactive-tap {isDockActive(item) ? 'active' : ''}"
-              aria-current={isDockActive(item) ? 'page' : undefined}
-              onclick={(e) => handleDockTabClick(e, item)}
-            >
-              <span class="dock-tab-icon">
-                {#if item.id === 'beranda'}
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                  </svg>
-                {:else if item.id === 'statistik'}
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                    <line x1="2" y1="20" x2="22" y2="20" />
-                  </svg>
-                {:else if item.id === 'tabungan'}
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                {:else if item.id === 'pengaturan'}
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                  </svg>
-                {/if}
-              </span>
-              <span class="dock-tab-label">{item.label}</span>
-              {#if isDockActive(item)}
-                <span class="active-dot" aria-hidden="true"></span>
+          <a
+            href={item.href}
+            class="dock-tab interactive-tap {isDockActive(item) ? 'active' : ''}"
+            aria-current={isDockActive(item) ? 'page' : undefined}
+            onclick={(e) => handleDockTabClick(e, item)}
+          >
+            <span class="dock-tab-icon">
+              {#if item.id === 'beranda'}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              {:else if item.id === 'statistik'}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                  <line x1="2" y1="20" x2="22" y2="20" />
+                </svg>
+              {:else if item.id === 'tabungan'}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              {:else if item.id === 'pengaturan'}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
               {/if}
-            </a>
-          {/if}
+            </span>
+            <span class="dock-tab-label">{item.label}</span>
+          </a>
         {/each}
       </div>
     </nav>
@@ -581,22 +575,22 @@
     align-items: stretch;
     height: 100vh;
     height: 100dvh;
-    background: var(--bg-sky);
-    background-attachment: fixed;
+    background: var(--bg);
     overflow: hidden;
   }
 
   .mobile-shell {
     position: relative;
     width: 100%;
-    max-width: 440px;
+    max-width: 720px;
     height: 100vh;
     height: 100dvh;
-    background: transparent;
+    background: var(--bg);
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     overflow: hidden;
+    margin: 0 auto;
   }
 
   /* Header */
@@ -607,13 +601,17 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    background: rgba(7, 12, 20, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--edge-soft);
+    padding: 12px 24px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
     min-height: 56px;
     box-sizing: border-box;
+  }
+
+  @media (min-width: 640px) {
+    .app-header {
+      padding: 12px 32px;
+    }
   }
 
   .header-left {
@@ -628,14 +626,13 @@
 
   .header-title {
     font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--komorebi);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--fg);
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
   }
 
   .cat-paw {
@@ -673,11 +670,16 @@
     scroll-snap-align: start;
     scroll-snap-stop: always;
     box-sizing: border-box;
-    padding: 16px;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 12px));
+    padding: 24px 24px calc(96px + env(safe-area-inset-bottom, 12px));
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     touch-action: pan-x pan-y;
+  }
+
+  @media (min-width: 640px) {
+    .tab-slide-panel {
+      padding: 32px 32px calc(96px + env(safe-area-inset-bottom, 12px));
+    }
   }
 
   .tab-slide-panel::-webkit-scrollbar {
@@ -693,42 +695,74 @@
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
-    padding: 16px;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 12px));
+    padding: 24px 24px calc(96px + env(safe-area-inset-bottom, 12px));
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+  }
+
+  @media (min-width: 640px) {
+    .app-content.standalone-page {
+      padding: 32px 32px calc(96px + env(safe-area-inset-bottom, 12px));
+    }
   }
 
   .app-content.standalone-page::-webkit-scrollbar {
     display: none;
   }
 
-  /* Floating Bottom Dock Navigation */
+  /* Floating Action Button (FAB) Tambah (+) di atas nav */
+  .fab-tambah {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 12px));
+    right: max(24px, calc(50% - 360px + 24px));
+    height: 52px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-radius: var(--r, 10px);
+    border: none;
+    box-shadow: none;
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 70;
+    transition: opacity 120ms var(--ease);
+  }
+
+  .fab-tambah:active {
+    opacity: 0.85;
+  }
+
+  .fab-label {
+    line-height: 1;
+  }
+
+  /* Bottom Dock Navigation - 4 items, minimal, 1px border */
   .bottom-dock {
     position: fixed;
-    bottom: calc(12px + env(safe-area-inset-bottom, 12px));
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: calc(100% - 24px);
-    max-width: 416px;
-    height: 64px;
-    background: rgba(9, 14, 22, 0.88);
-    border: 1px solid var(--edge-soft);
-    border-radius: 32px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    width: 100%;
+    max-width: 720px;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-raised);
+    border-top: 1px solid var(--line);
     z-index: 60;
     box-sizing: border-box;
-    padding: 0 8px;
+    padding: 0 16px env(safe-area-inset-bottom, 0px);
   }
 
   .dock-inner {
     display: flex;
     align-items: center;
     justify-content: space-around;
-    height: 100%;
-    position: relative;
+    height: 56px;
+    width: 100%;
   }
 
   .dock-tab {
@@ -739,91 +773,37 @@
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    color: var(--kabut);
+    color: var(--fg-muted);
     gap: 3px;
-    transition: color 150ms ease-out, transform 120ms ease-out;
-    padding: 4px 0;
-    position: relative;
-    border-radius: 20px;
+    transition: color 120ms var(--ease);
+    border: none;
+    background: transparent;
+    cursor: pointer;
   }
 
   .dock-tab:active {
-    transform: scale(0.92);
+    opacity: 0.7;
   }
 
   .dock-tab.active {
-    color: var(--aether);
-  }
-
-  .dock-tab.active .dock-tab-icon {
-    filter: drop-shadow(0 0 8px var(--aether));
-  }
-
-  .dock-tab.active .dock-tab-label {
-    font-weight: 700;
-    color: var(--aether);
+    color: var(--accent);
   }
 
   .dock-tab-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 150ms ease-out, filter 150ms ease-out;
-  }
-
-  .dock-tab-label {
-    font-size: 11px;
-    font-family: var(--font-ui);
     line-height: 1;
   }
 
-  .active-dot {
-    position: absolute;
-    bottom: 4px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--aether);
-    box-shadow: 0 0 6px var(--aether);
+  .dock-tab-label {
+    font-size: var(--fs-cap, 13px);
+    font-family: var(--font-ui);
+    line-height: 1;
+    font-weight: 500;
   }
 
-  /* Center Prominent Tombol Catat */
-  .dock-center-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    height: 100%;
-  }
-
-  .dock-btn-catat {
-    position: absolute;
-    top: -16px;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--bara) 0%, #A15507 100%);
-    color: var(--on-bara);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--glow-bara), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    touch-action: manipulation;
-    box-sizing: border-box;
-    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
-  }
-
-  .dock-btn-catat:active {
-    transform: translateY(2px) scale(0.94);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(217, 119, 6, 0.25);
-  }
-
-  .catat-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .dock-tab.active .dock-tab-label {
+    font-weight: 600;
   }
 </style>

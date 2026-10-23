@@ -1,86 +1,140 @@
-/* Dark Aether Design System Tokens */
-@import '@fontsource-variable/unbounded';
-@import '@fontsource-variable/plus-jakarta-sans';
-@import '@fontsource-variable/jetbrains-mono';
+/* Buku Kas Modern Design System Tokens */
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/dm-sans';
 
 :root {
-  /* Core Dark Aether Palette */
-  --senja: #060B12;
-  --teal-malam: #08111A;
-  --kanopi: #050E0C;
-  --bg-sky: linear-gradient(180deg, var(--senja) 0%, var(--teal-malam) 45%, var(--kanopi) 100%);
-  --komorebi: #E2E8F0; /* primary text: soft pearl off-white */
-  --kabut: #94A3B8; /* secondary text: slate mist */
-  --lumut: #64748B; /* tertiary / telemetry text: muted slate */
-  --bara: #D97706; /* tabung / menabung: warm amber */
-  --on-bara: #1C1305;
-  --aether: #3B9AB8; /* sisa uang, dompet, calm deep aether */
-  --tunas: #38A169; /* pemasukan (masuk), safe/good status: muted emerald */
-  --api: #D14343; /* pengeluaran (keluar), overlimit, danger: muted crimson */
-  --glow-bara: 0 0 16px rgb(217 119 6 / 0.15);
-  --glow-aether: 0 0 16px rgb(59 154 184 / 0.16);
-  --glow-tunas: 0 0 16px rgb(56 161 105 / 0.14);
-  --glow-api: 0 0 16px rgb(209 67 67 / 0.16);
+  color-scheme: light dark;
 
-  /* Glass Surface Tokens - Clean neutral glass on obsidian */
-  --glass-1: rgba(255, 255, 255, 0.035);
-  --glass-2: rgba(255, 255, 255, 0.06);
-  --glass-3: rgba(255, 255, 255, 0.09);
-  --edge-soft: rgba(255, 255, 255, 0.08);
-  --edge-bright: rgba(255, 255, 255, 0.18);
-  --scrim: rgba(3, 7, 12, 0.75);
+  /* Terang (default) */
+  --bg: #F6F3EC;
+  --bg-raised: #FBF9F4;
+  --fg: #1C1B18;
+  --fg-muted: #5F5A50;
+  --line: #DDD7C8;
+  --track: #E3DDCE;
+  --accent: #1F5C46;
+  --on-accent: #FFFFFF;
+  --expense: #A8452A;
+  --warn: #8A5F0A;
+  --overlay: rgb(28 27 24 / .35);
+  --chart-1: #1F5C46;
+  --chart-2: #A8452A;
+  --chart-3: #B07F12;
+  --chart-4: #3F5F8F;
+  --chart-5: #8C867A;
 
-  /* Typography Font Families */
-  --font-display: 'Unbounded Variable', sans-serif;
-  --font-ui: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', monospace;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-family: var(--font-ui);
 
-  /* Backward Compatibility Mapping */
-  --bg: var(--senja);
-  --card: var(--glass-1);
-  --card-solid: #0A1118;
-  --ink: var(--komorebi);
-  --mute: var(--kabut);
-  --line: var(--edge-soft);
-  --accent: var(--bara);
-  --accent-pressed: #B45309;
-  --sky: var(--aether);
-  --grass: var(--tunas);
+  --fs-hero: clamp(40px, 11vw, 48px);
+  --fs-title: 32px;
+  --fs-h: 18px;
+  --fs-body: 16px;
+  --fs-sm: 14px;
+  --fs-cap: 13px;
 
-  /* Status Tokens */
-  --good: var(--tunas);
-  --warn: var(--bara);
-  --bad: var(--api);
-  --bad-pressed: #991B1B;
+  --r: 10px;
+  --r-bar: 4px;
+  --gutter: 24px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
 
-  /* Category Translucent Fills & Borders */
-  --cat-jajan-fill: rgba(209, 67, 67, 0.10);
-  --cat-jajan-border: rgba(209, 67, 67, 0.28);
-
-  --cat-pulsa-fill: rgba(209, 85, 67, 0.10);
-  --cat-pulsa-border: rgba(209, 85, 67, 0.28);
-
-  --cat-bensin-fill: rgba(209, 67, 67, 0.10);
-  --cat-bensin-border: rgba(209, 67, 67, 0.28);
-
-  --cat-jajanin-fill: rgba(180, 80, 110, 0.10);
-  --cat-jajanin-border: rgba(180, 80, 110, 0.28);
-
-  --cat-nabung-fill: rgba(217, 119, 6, 0.10);
-  --cat-nabung-border: rgba(217, 119, 6, 0.28);
-
-  --cat-masuk-fill: rgba(56, 161, 105, 0.10);
-  --cat-masuk-border: rgba(56, 161, 105, 0.28);
-
-  /* Component Metrics */
-  --radius-card: 22px;
-  --radius-btn: 16px;
-  --radius-chip: 999px;
-  --radius-sheet: 28px;
-  --border-card-bottom: 3px;
-  --border-btn-bottom: 3px;
+  /* Backward Compatibility Aliases */
+  --senja: var(--bg);
+  --teal-malam: var(--bg);
+  --kanopi: var(--bg);
+  --bg-sky: var(--bg);
+  --komorebi: var(--fg);
+  --kabut: var(--fg-muted);
+  --lumut: var(--fg-muted);
+  --bara: var(--warn);
+  --on-bara: var(--on-accent);
+  --aether: var(--accent);
+  --tunas: var(--accent);
+  --api: var(--expense);
+  --good: var(--accent);
+  --bad: var(--expense);
+  --bad-pressed: var(--expense);
+  --ink: var(--fg);
+  --mute: var(--fg-muted);
+  --card: var(--bg-raised);
+  --card-solid: var(--bg-raised);
+  --radius-card: 10px;
+  --radius-btn: 10px;
+  --radius-chip: 10px;
+  --radius-sheet: 10px;
   --touch-min: 44px;
+
+  /* Neutral surfaces - no dark glass */
+  --glass-1: var(--bg-raised);
+  --glass-2: var(--bg-raised);
+  --glass-3: var(--bg-raised);
+  --edge-soft: var(--line);
+  --edge-bright: var(--line);
+  --scrim: var(--overlay);
+
+  /* No generic AI neon glows */
+  --glow-bara: none;
+  --glow-aether: none;
+  --glow-tunas: none;
+  --glow-api: none;
+
+  /* Category Neutral Surfaces */
+  --cat-jajan-fill: var(--bg-raised);
+  --cat-jajan-border: var(--line);
+  --cat-pulsa-fill: var(--bg-raised);
+  --cat-pulsa-border: var(--line);
+  --cat-bensin-fill: var(--bg-raised);
+  --cat-bensin-border: var(--line);
+  --cat-jajanin-fill: var(--bg-raised);
+  --cat-jajanin-border: var(--line);
+  --cat-nabung-fill: var(--bg-raised);
+  --cat-nabung-border: var(--line);
+  --cat-masuk-fill: var(--bg-raised);
+  --cat-masuk-border: var(--line);
+}
+
+/* Gelap: ikut sistem, kecuali pengguna memilih terang secara manual */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #171614;
+    --bg-raised: #201E1B;
+    --fg: #F0ECE3;
+    --fg-muted: #A8A296;
+    --line: #2E2B27;
+    --track: #2E2B27;
+    --accent: #8CCBA8;
+    --on-accent: #10231A;
+    --expense: #E8957A;
+    --warn: #E3B866;
+    --overlay: rgb(0 0 0 / .55);
+    --chart-1: #8CCBA8;
+    --chart-2: #E8957A;
+    --chart-3: #E3B866;
+    --chart-4: #9DB4D8;
+    --chart-5: #7A7468;
+  }
+}
+
+/* Gelap: dipilih manual */
+:root[data-theme='dark'] {
+  --bg: #171614;
+  --bg-raised: #201E1B;
+  --fg: #F0ECE3;
+  --fg-muted: #A8A296;
+  --line: #2E2B27;
+  --track: #2E2B27;
+  --accent: #8CCBA8;
+  --on-accent: #10231A;
+  --expense: #E8957A;
+  --warn: #E3B866;
+  --overlay: rgb(0 0 0 / .55);
+  --chart-1: #8CCBA8;
+  --chart-2: #E8957A;
+  --chart-3: #E3B866;
+  --chart-4: #9DB4D8;
+  --chart-5: #7A7468;
 }
 
 /* Reset & Box Sizing */
@@ -90,17 +144,22 @@
   padding: 0;
 }
 
-html, body {
-  min-height: 100vh;
-  background: var(--bg-sky);
-  background-attachment: fixed;
-  color: var(--komorebi);
-  font-family: var(--font-ui);
-  font-size: 16px;
-  line-height: 1.5;
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 var(--fs-body)/1.4 var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -112,6 +171,7 @@ input, textarea, [contenteditable="true"] {
 }
 
 /* Tabular Numbers */
+.num,
 .tabular-nums,
 [data-tabular-nums] {
   font-variant-numeric: tabular-nums;
@@ -122,32 +182,21 @@ input, textarea, [contenteditable="true"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Glass Surface Utility Classes */
-.glass-core {
-  background: var(--glass-2);
-  border: 1px solid var(--edge-soft);
-  border-radius: 28px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-.glass-panel {
-  background: var(--glass-1);
-  border: 1px solid var(--edge-soft);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
+/* Minimalist Clean Surfaces - Replaces Glassmorphism */
+.glass-core,
+.glass-panel,
 .glass-row {
-  background: var(--glass-1);
-  border: 1px solid var(--edge-soft);
-  border-radius: 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r, 10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 /* Focus Ring */
 :focus-visible {
-  outline: 2px solid var(--aether);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -158,113 +207,31 @@ button, a, input, select, textarea, [role="button"] {
   color: inherit;
 }
 
-/* Micro-spring tactile feedback */
+/* Interactive tap feedback */
 .interactive-tap {
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  transition: opacity 120ms var(--ease), transform 120ms var(--ease);
 }
 
 .interactive-tap:active {
-  transform: scale(0.94);
+  opacity: 0.85;
 }
 
-/* Stagger entrance utility - cinematic smooth curve */
+/* Stagger entrance utility */
 .animate-stagger {
-  opacity: 0;
-  transform: translateY(30px) scale(0.95);
-  filter: blur(5px);
-  animation: staggerIn 1000ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--i, 0) * 110ms);
-  will-change: transform, opacity, filter;
+  animation: fadeIn 200ms var(--ease) forwards;
 }
 
-@keyframes staggerIn {
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* View Transitions API: Circular Mask Reveal - slow & satisfying curve */
-::view-transition-old(root) {
-  animation: fadeScaleOut 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(root) {
-  animation: circleReveal 1200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  mix-blend-mode: normal;
-}
-
-@keyframes fadeScaleOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0.75;
-    transform: scale(0.98);
-  }
-}
-
-@keyframes circleReveal {
-  from {
-    clip-path: circle(0px at var(--nav-x, 50%) var(--nav-y, 90%));
-  }
-  to {
-    clip-path: circle(160vmax at var(--nav-x, 50%) var(--nav-y, 90%));
-  }
-}
-
-/* Lenis smooth scroll */
-html.lenis, html.lenis body {
-  height: auto;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-
-.lenis.lenis-smooth iframe {
-  pointer-events: none;
-}
-
-/* Reduced Motion - Intentional accessible alternative preserving state changes and hierarchy */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 1ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-
-  /* Preserve gentle opacity and color transitions for state feedback while removing spatial motion */
-  button, a, input, select, textarea, [role="button"], .glass-panel, .glass-core, .glass-row {
-    transition-property: opacity, background-color, border-color, color, box-shadow !important;
-    transition-duration: 150ms !important;
-  }
-
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none !important;
-  }
-
-  .animate-stagger {
-    animation: none !important;
-    opacity: 1 !important;
     transform: none !important;
-  }
-
-  .interactive-tap {
-    transition: none !important;
-    transform: none !important;
+    transition: opacity 150ms ease !important;
   }
 }

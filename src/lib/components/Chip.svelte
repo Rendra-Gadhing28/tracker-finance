@@ -46,28 +46,44 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: var(--touch-min, 44px);
-    padding: 8px 16px;
-    border-radius: var(--radius-chip, 999px);
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--kabut);
-    font-size: 14px;
+    gap: 8px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg-muted);
+    font-size: 15px;
+    font-family: var(--font-ui);
     font-weight: 500;
     cursor: pointer;
     box-sizing: border-box;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease-out, border-color 220ms ease-out, box-shadow 320ms ease-out, color 220ms ease-out;
+    transition: background-color 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    box-shadow: none;
+  }
+
+  .neko-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .neko-chip:hover:not(:disabled) {
-    color: var(--komorebi);
-    border-color: var(--edge-bright);
-    background: var(--glass-2);
+    color: var(--fg);
+    border-color: var(--fg-muted);
+  }
+
+  .neko-chip.selected {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+    font-weight: 600;
+  }
+
+  .neko-chip.variant-outline {
+    background: transparent;
   }
 
   .chip-icon {
@@ -79,34 +95,5 @@
 
   .chip-label {
     line-height: 1.2;
-  }
-
-  .neko-chip.selected {
-    border-color: var(--aether);
-    background: rgba(59, 154, 184, 0.14);
-    color: var(--komorebi);
-    font-weight: 700;
-    box-shadow: 0 0 10px rgba(59, 154, 184, 0.16), inset 0 0 8px rgba(59, 154, 184, 0.08);
-  }
-
-  .neko-chip.variant-outline {
-    background: transparent;
-    border: 1px dashed var(--edge-soft);
-  }
-
-  .neko-chip.variant-outline.selected {
-    border-style: solid;
-    border-color: var(--aether);
-    background: rgba(59, 154, 184, 0.10);
-  }
-
-  .neko-chip:active:not(:disabled) {
-    transform: scale(0.96);
-  }
-
-  .neko-chip:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
   }
 </style>

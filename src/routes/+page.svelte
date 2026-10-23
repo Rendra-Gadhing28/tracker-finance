@@ -3,10 +3,15 @@
   import CatWorld from '$lib/components/CatWorld.svelte';
   import AchievementSheet from '$lib/components/AchievementSheet.svelte';
   import CategorySheet from '$lib/components/CategorySheet.svelte';
+  import BottomSheet from '$lib/components/BottomSheet.svelte';
   import Card from '$lib/components/Card.svelte';
   import Button from '$lib/components/Button.svelte';
   import AnimatedNumber from '$lib/components/AnimatedNumber.svelte';
+  import ProgressBar from '$lib/components/ProgressBar.svelte';
+  import StatStrip from '$lib/components/StatStrip.svelte';
+  import TransactionRow from '$lib/components/TransactionRow.svelte';
   import { formatRp } from '$lib/money.js';
+  import { rupiah, compact } from '$lib/format.js';
   import {
     getWeekRange,
     isDateInWeek,
@@ -39,6 +44,7 @@
   let isBalanceHidden = $state(false);
   let txFilter = $state('semua'); // 'semua' | 'keluar' | 'masuk'
   let isCategorySheetOpen = $state(false);
+  let isCatWorldModalOpen = $state(false);
   let selectedCategoryToEdit = $state(null);
 
   const isCurrentWeek = $derived(weekOffset === 0);
@@ -63,7 +69,7 @@
     return getWeekRange(targetDate, startDay);
   });
 
-  // Week switcher label: e.g. "Minggu ini · 12–18 Okt"
+  // Week switcher label
   const weekLabel = $derived.by(() => {
     const startP = getWIBParts(activeWeekRange.start);
     const lastDayP = getWIBParts(new Date(activeWeekRange.end.getTime() - 1000));
@@ -103,6 +109,33 @@
     });
   });
 
+  // Hero Status Text & Color (DESIGN.md Section 5)
+  const heroStatus = $derived.by(() => {
+    const s = activeSummary.S;
+    const a = activeSummary.A;
+    const p = activeSummary.P;
+    if (s < 0) {
+      return {
+        label: `Lewat ${rupiah(Math.abs(s))}`,
+        color: 'var(--expense)',
+        type: 'lewat'
+      };
+    }
+    const ratio = a > 0 ? p / a : 0;
+    if (ratio >= 0.8) {
+      return {
+        label: `Hampir habis · sisa ${compact(s)}`,
+        color: 'var(--warn)',
+        type: 'hampir'
+      };
+    }
+    return {
+      label: 'Aman',
+      color: 'var(--accent)',
+      type: 'aman'
+    };
+  });
+
   // Summary counts for Keluar, Masuk, Tabung in active week
   const totalsByTipe = $derived.by(() => {
     let keluar = 0;
@@ -132,16 +165,9 @@
   const dailySpent = $derived(Number(activeSummary?.P_hari_ini) || 0);
   const dailyJatah = $derived(Number(activeSummary?.jatah) || 0);
   const dailySisa = $derived(Number(activeSummary?.sisa_hari) || 0);
-
   const dailySpentPct = $derived.by(() => {
     if (dailyJatah <= 0) return 0;
     return Math.round((dailySpent / dailyJatah) * 100);
-  });
-
-  const dailyMeterState = $derived.by(() => {
-    if (dailySpentPct >= 85 || dailySisa < 0) return 'danger';
-    if (dailySpentPct >= 70) return 'warning';
-    return 'normal';
   });
 
   // Group transactions by date descending
@@ -175,7 +201,7 @@
     return groups;
   });
 
-  // Filtered transactions by type segment pill
+  // Filtered transactions by type segment
   const filteredGroupedTransactions = $derived.by(() => {
     if (txFilter === 'semua') return groupedTransactions;
     const filtered = [];
@@ -198,11 +224,12 @@
       .sort((a, b) => (a.urut || 0) - (b.urut || 0));
   });
 
-  // Gamification & Streak state (PRD 23, 24, 25)
+  // Gamification & Streak state
   let isAchievementSheetOpen = $state(false);
   let hasShownBadgeToastThisSession = false;
   let seenBadgeIds = $state(new Set());
   let everUnlockedBadgeIds = $state(new Set());
+  let catReactionCallback = null;
 
   const streakData = $derived.by(() => {
     const _tick = $ticker;
@@ -278,6 +305,10 @@
     } catch (e) {
       console.error('Error reading badge history:', e);
     }
+
+    txManager?.registerCatReaction?.((actionType, detail) => {
+      catReactionCallback?.(actionType, detail);
+    });
   });
 
   $effect(() => {
@@ -374,7 +405,7 @@
 
   const highlightedTxId = $derived(txManager?.getHighlightedTxId?.());
 
-  // Set active week date for creation modal preset (PRD 11.5)
+  // Set active week date for creation modal preset
   $effect(() => {
     if (weekOffset !== 0) {
       const mid = new Date(activeWeekRange.start.getTime() + 3 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000);
@@ -384,7 +415,7 @@
     }
   });
 
-  // Pull to refresh support (PRD 11.4)
+  // Pull to refresh support
   let pullStartY = 0;
   let pullDistance = $state(0);
   let isRefreshing = $state(false);
@@ -437,93 +468,67 @@
 >
   {#if pullDistance > 0 || isRefreshing}
     <div class="pull-refresh-indicator">
-      <span>{isRefreshing ? '🔄 Menyegarkan...' : '⬇️ Tarik untuk menyegarkan'}</span>
+      <span>{isRefreshing ? 'Menyegarkan...' : 'Tarik untuk menyegarkan'}</span>
     </div>
   {/if}
 
   {#if !$isDataLoaded}
-    <!-- Skeleton state -->
+    <!-- Loading skeleton state -->
     <div class="skeleton-wrapper" aria-label="Memuat data">
-      <div class="skeleton-block skeleton-cat"></div>
-      <div class="skeleton-block skeleton-nav"></div>
-      <div class="skeleton-block skeleton-card"></div>
-      <div class="skeleton-grid">
-        <div class="skeleton-block skeleton-pill"></div>
-        <div class="skeleton-block skeleton-pill"></div>
-        <div class="skeleton-block skeleton-pill"></div>
-      </div>
-      <div class="skeleton-block skeleton-category"></div>
-      <div class="skeleton-block skeleton-category"></div>
+      <div class="skeleton-line" style="width: 40%; height: 20px;"></div>
+      <div class="skeleton-line" style="width: 70%; height: 48px; margin: 16px 0;"></div>
+      <div class="skeleton-line" style="width: 100%; height: 60px;"></div>
+      <div class="skeleton-line" style="width: 100%; height: 120px;"></div>
     </div>
   {:else}
-    <!-- 1. Header Section -->
+    <!-- 1. Header Atas Beranda -->
     <header class="beranda-header">
-      <div class="greeting-row">
-        <div class="greeting-text-group">
+      <div class="header-top-row">
+        <div class="greeting-group">
           <span class="greeting-title">{greeting}</span>
-          <span class="greeting-subtitle">Mari kelola keuanganmu hari ini</span>
+          <!-- Week Switcher -->
+          <div class="week-switch-row">
+            <button
+              type="button"
+              class="week-nav-btn"
+              onclick={() => (weekOffset -= 1)}
+              aria-label="Minggu sebelumnya"
+            >
+              ‹
+            </button>
+            <span class="week-text-label">{weekLabel}</span>
+            <button
+              type="button"
+              class="week-nav-btn"
+              disabled={isCurrentWeek}
+              onclick={() => !isCurrentWeek && (weekOffset += 1)}
+              aria-label="Minggu berikutnya"
+            >
+              ›
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          class="streak-badge-btn"
-          onclick={handleOpenAchievementSheet}
-          aria-label="Lihat lencana dan pencapaian"
-        >
-          <span class="streak-fire">🔥</span>
-          <span class="streak-count font-num tabular-nums">{streakData.currentStreak}</span>
-          <span class="streak-sep">·</span>
-          <span class="badge-icon">🎖️</span>
-          <span class="badge-count font-num tabular-nums">{displayUnlockedCount}</span>
-        </button>
-      </div>
 
-      <!-- Week Switcher Capsule -->
-      <div class="week-capsule-nav">
+        <!-- Tombol Kucing CatWorld & Pencapaian (min 44x44px tap target) -->
         <button
           type="button"
-          class="week-nav-arrow"
-          onclick={() => (weekOffset -= 1)}
-          aria-label="Minggu sebelumnya"
+          class="catworld-trigger-btn"
+          onclick={() => (isCatWorldModalOpen = true)}
+          aria-label="Buka CatWorld dan Pencapaian"
         >
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <span class="week-capsule-label">{weekLabel}</span>
-        <button
-          type="button"
-          class="week-nav-arrow"
-          disabled={isCurrentWeek}
-          onclick={() => !isCurrentWeek && (weekOffset += 1)}
-          aria-label="Minggu berikutnya"
-        >
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <span class="cat-btn-icon" aria-hidden="true">🐱</span>
+          <span class="cat-btn-streak num">{streakData.currentStreak}d</span>
         </button>
       </div>
     </header>
 
-    <!-- 2. CatWorld Mascot Frame -->
-    <section class="catworld-section" aria-label="Kucing Reaktif">
-      <CatWorld
-        r={activeSummary.r}
-        sisa_hari={activeSummary.sisa_hari}
-        streak={streakData.currentStreak}
-        onregister={(fn) => txManager?.registerCatReaction?.(fn)}
-      />
-    </section>
-
-    <!-- 3. Income Banner if not recorded this week -->
+    <!-- 2. Income Reminder Banner if not recorded this week -->
     {#if isCurrentWeek && !hasIncomeThisWeek}
-      <div class="income-banner glass-panel">
-        <div class="banner-text">
-          <span class="banner-icon">💰</span>
-          <span>Uang jajan minggu ini belum dicatat</span>
-        </div>
+      <div class="income-banner">
+        <span class="income-banner-text">Uang jajan minggu ini belum dicatat</span>
         <button
           type="button"
-          class="banner-action-btn"
+          class="income-banner-action"
           onclick={handleRecordIncome}
         >
           Catat {formatRp($settings?.uang_jajan_mingguan || 145000)}
@@ -531,346 +536,197 @@
       </div>
     {/if}
 
-    <!-- 4. Aether Core Hero -->
-    <section class="aether-hero glass-core" aria-label="Ringkasan Anggaran">
-      <div class="hero-top-row">
-        <div class="hero-label-group">
-          <span class="hero-label">
-            {isCurrentWeek ? 'Sisa jajan minggu ini' : 'Sisa jajan minggu lalu'}
-          </span>
-          <span class="hero-wallet-pill tabular-nums">
-            Dompet {#if isBalanceHidden}••••••{:else}<AnimatedNumber value={$walletBalance} />{/if}
-          </span>
-        </div>
+    <!-- 3. Hero Saldo / Sisa Utama (DESIGN.md Section 1, 2.2, 5) -->
+    <section class="hero-section" aria-label="Sisa Uang">
+      <div class="hero-top-info">
+        <span class="hero-label">
+          {isCurrentWeek ? 'Sisa uang minggu ini' : 'Sisa uang minggu lalu'}
+        </span>
         <button
           type="button"
-          class="privacy-toggle-btn"
+          class="wallet-pill-btn"
           onclick={toggleBalancePrivacy}
           aria-label={isBalanceHidden ? 'Tampilkan saldo' : 'Sembunyikan saldo'}
         >
-          {#if isBalanceHidden}
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-              <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-              <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-              <line x1="2" y1="2" x2="22" y2="22" />
-            </svg>
-          {:else}
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          {/if}
+          <span class="wallet-pill-label">Dompet</span>
+          <span class="wallet-pill-val num">
+            {#if isBalanceHidden}••••••{:else}{rupiah($walletBalance)}{/if}
+          </span>
         </button>
       </div>
 
-      <div class="hero-balance-row">
-        <h2 class="hero-balance font-num tabular-nums {activeSummary.S < 0 ? 'over-budget' : ''}">
+      <div class="hero-amount-row">
+        <h2 class="hero-amount font-num num" class:over-limit={activeSummary.S < 0}>
           {#if isBalanceHidden}
             Rp •••••••
           {:else}
             <AnimatedNumber value={activeSummary.S} />
           {/if}
         </h2>
-        <div class="hero-status-badge">
-          {#if activeSummary.S < 0}
-            <span class="badge-over font-num tabular-nums">
-              Lewat {formatRp(Math.abs(activeSummary.S))}
-            </span>
-          {:else}
-            <span class="badge-ratio font-num tabular-nums">
-              {Math.round(Math.max(0, activeSummary.r * 100))}%
-            </span>
-          {/if}
-        </div>
       </div>
 
-      <!-- Mini Stat Panels: Masuk, Keluar, Tabung -->
-      <div class="hero-stats-grid">
-        <button
-          type="button"
-          class="hero-stat-box masuk interactive-tap"
-          onclick={() => txManager?.openCreate?.({ tipe: 'masuk' })}
-          aria-label="Catat transaksi pemasukan"
-        >
-          <div class="stat-icon-label">
-            <span class="stat-arrow down">↓</span>
-            <span>Masuk</span>
-          </div>
-          <span class="stat-value font-num tabular-nums">
-            {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.masuk} />{/if}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          class="hero-stat-box keluar interactive-tap"
-          onclick={() => txManager?.openCreate?.({ tipe: 'keluar' })}
-          aria-label="Catat transaksi pengeluaran"
-        >
-          <div class="stat-icon-label">
-            <span class="stat-arrow up">↑</span>
-            <span>Keluar</span>
-          </div>
-          <span class="stat-value font-num tabular-nums">
-            {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.keluar} />{/if}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          class="hero-stat-box tabung interactive-tap"
-          onclick={() => txManager?.openCreate?.({ tipe: 'tabung' })}
-          aria-label="Catat tabungan"
-        >
-          <div class="stat-icon-label">
-            <span class="stat-arrow piggy">🐷</span>
-            <span>Tabung</span>
-          </div>
-          <span class="stat-value font-num tabular-nums">
-            {#if isBalanceHidden}••••{:else}<AnimatedNumber value={totalsByTipe.tabung} />{/if}
-          </span>
-        </button>
+      <!-- Teks Status Pendamping -->
+      <div class="hero-status-row">
+        <span class="status-dot" style:background={heroStatus.color}></span>
+        <span class="status-text" style:color={heroStatus.color}>
+          {heroStatus.label}
+        </span>
       </div>
-
-      <!-- Batas Harian / Daily Limit Meter Bar (Current week only) -->
-      {#if isCurrentWeek}
-        <div class="daily-limit-card {dailyMeterState}">
-          <div class="daily-limit-header">
-            <div class="daily-header-left">
-              <span class="daily-title">Batas Harian</span>
-              {#if dailyMeterState === 'danger'}
-                <span class="danger-badge">Bahaya!</span>
-              {/if}
-            </div>
-            <span class="daily-spent-now tabular-nums">
-              Hari ini {formatRp(dailySpent)}
-            </span>
-          </div>
-
-          <!-- Progress Track with Cat Indicator -->
-          <div class="daily-track-wrapper">
-            <div class="daily-progress-track">
-              <div
-                class="daily-progress-fill state-{dailyMeterState}"
-                style="width: {Math.min(100, Math.max(0, dailySpentPct))}%"
-              ></div>
-            </div>
-            <div
-              class="cat-meter-avatar state-{dailyMeterState}"
-              style="left: clamp(4%, {Math.min(96, Math.max(4, dailySpentPct))}%, 96%);"
-              aria-hidden="true"
-            >
-              🐱
-            </div>
-          </div>
-
-          <div class="daily-limit-footer tabular-nums">
-            {#if dailyJatah === 0}
-              <span class="daily-subtext">Jatah habis</span>
-            {:else if dailySisa < 0}
-              <span class="daily-subtext danger">
-                Lewat {formatRp(Math.abs(dailySisa))} dari jatah {formatRp(dailyJatah)}
-              </span>
-            {:else}
-              <span class="daily-subtext">
-                Sisa {formatRp(dailySisa)} dari jatah {formatRp(dailyJatah)}
-              </span>
-            {/if}
-          </div>
-        </div>
-
-        <!-- 7-day streak track -->
-        <div
-          class="streak-strip"
-          role="button"
-          tabindex="0"
-          onclick={handleOpenAchievementSheet}
-          onkeydown={(e) => e.key === 'Enter' && handleOpenAchievementSheet()}
-          aria-label="Lihat pencapaian: {streakData.streakTitle}"
-        >
-          <div class="streak-dots">
-            {#each streakData.last7Days as day}
-              <span class="streak-dot {day.type}" title="{day.dayLabel}: {day.type}">
-                {day.symbol}
-              </span>
-            {/each}
-          </div>
-          <span class="streak-title-text">{streakData.streakTitle}</span>
-        </div>
-
-        <!-- Tombol Hari ini tidak jajan -->
-        {#if streakData.canMarkTanpaJajanToday}
-          <button
-            type="button"
-            class="tanpa-jajan-glass-btn"
-            onclick={handleMarkTanpaJajan}
-          >
-            <span>Hari ini tidak jajan</span>
-            <span class="moon-icon">🌙</span>
-          </button>
-        {/if}
-      {/if}
     </section>
 
-    <!-- 5. Kantong Anggaran (Envelopes / Categories) -->
-    <section class="envelopes-section" aria-label="Kantong Anggaran">
-      <div class="section-title-row">
-        <h3 class="section-title">Kantong anggaran</h3>
+    <!-- 4. StatStrip Ringkas 3 Kolom (DESIGN.md Section 4.3) -->
+    <StatStrip
+      items={[
+        {
+          label: 'Masuk',
+          value: isBalanceHidden ? '••••' : (totalsByTipe.masuk >= 1000000 ? compact(totalsByTipe.masuk) : rupiah(totalsByTipe.masuk)),
+          color: 'var(--accent)',
+          onclick: () => txManager?.openCreate?.({ tipe: 'masuk' })
+        },
+        {
+          label: 'Keluar',
+          value: isBalanceHidden ? '••••' : (totalsByTipe.keluar >= 1000000 ? compact(totalsByTipe.keluar) : rupiah(totalsByTipe.keluar)),
+          color: 'var(--expense)',
+          onclick: () => txManager?.openCreate?.({ tipe: 'keluar' })
+        },
+        {
+          label: 'Tabung',
+          value: isBalanceHidden ? '••••' : (totalsByTipe.tabung >= 1000000 ? compact(totalsByTipe.tabung) : rupiah(totalsByTipe.tabung)),
+          color: 'var(--warn)',
+          onclick: () => txManager?.openCreate?.({ tipe: 'tabung' })
+        }
+      ]}
+    />
+
+    <!-- 5. Batas Harian (Daily Allowance Meter, Current week only) -->
+    {#if isCurrentWeek}
+      <section class="daily-allowance-section" aria-label="Batas Harian">
+        <div class="daily-meta-row">
+          <span class="daily-label">Batas Hari Ini</span>
+          <span class="daily-details num">
+            {#if dailySisa < 0}
+              <span class="daily-over">Lewat {rupiah(Math.abs(dailySisa))}</span>
+            {:else}
+              <span>Sisa {rupiah(dailySisa)} / Jatah {rupiah(dailyJatah)}</span>
+            {/if}
+          </span>
+        </div>
+        <ProgressBar
+          value={dailyJatah > 0 ? dailySpent / dailyJatah : 0}
+          color={dailySisa < 0 ? 'var(--expense)' : dailySpentPct >= 80 ? 'var(--warn)' : 'var(--accent)'}
+        />
+      </section>
+    {/if}
+
+    <!-- 6. Kantong Anggaran (DESIGN.md Section 4.6 BudgetRow) -->
+    <section class="budgets-section" aria-label="Kantong Anggaran">
+      <div class="section-title-bar">
+        <h3 class="section-heading">Kantong anggaran</h3>
         <button
           type="button"
-          class="manage-budget-chip"
+          class="section-sub-link"
           onclick={() => {
             selectedCategoryToEdit = null;
             isCategorySheetOpen = true;
           }}
         >
-          <span>Atur Jatah</span>
-          <span class="chip-arrow">›</span>
+          Atur jatah ›
         </button>
       </div>
 
-      <div class="envelopes-list">
-        {#each displayCategories as cat, i}
+      <div class="budget-rows-list">
+        {#each displayCategories as cat}
           {@const spent = categorySpentMap[cat.id] || 0}
           {@const limit = Number(cat.limit_mingguan) || 1}
-          {@const pct = Math.round((spent / limit) * 100)}
-          {@const isOver85 = pct >= 85}
-          {@const isOverLimit = spent > limit}
+          {@const ratio = limit > 0 ? spent / limit : 0}
+          {@const isOver = spent > limit}
+          {@const isNear = ratio >= 0.8 && !isOver}
 
-          <div
-            class="envelope-card glass-panel interactive-tap animate-stagger {isOver85 ? 'over-85' : ''}"
-            style="--i: {i}"
-            role="button"
-            tabindex="0"
+          <button
+            type="button"
+            class="budget-item-row"
             onclick={() => txManager?.openCreate?.({ kategori_id: cat.id, tipe: cat.tipe })}
-            onkeydown={(e) => e.key === 'Enter' && txManager?.openCreate?.({ kategori_id: cat.id, tipe: cat.tipe })}
           >
-            <div class="envelope-top">
-              <div class="envelope-identity">
-                <div class="envelope-icon-orb {cat.warna || cat.id}">
-                  <span>{cat.ikon}</span>
-                </div>
-                <div class="envelope-name-group">
-                  <span class="envelope-name">{cat.nama}</span>
-                  <span class="envelope-limits tabular-nums">
-                    {formatRp(spent)} / {formatRp(limit)}
-                  </span>
-                </div>
+            <div class="budget-top-line">
+              <div class="budget-title-wrap">
+                <span class="budget-emoji" aria-hidden="true">{cat.ikon}</span>
+                <span class="budget-name">{cat.nama}</span>
               </div>
-              <div class="envelope-pct-group">
-                <span class="envelope-pct font-num tabular-nums {isOver85 ? 'text-api' : ''}">
-                  {pct}%
-                </span>
-                {#if isOverLimit}
-                  <span class="over-chip tabular-nums">+{formatRp(spent - limit)}</span>
-                {/if}
+              <div class="budget-values num">
+                <span class="budget-spent-val" class:val-over={isOver}>{rupiah(spent)}</span>
+                <span class="budget-limit-val"> / {rupiah(limit)}</span>
               </div>
             </div>
 
-            <div class="capsule-track">
-              <div
-                class="capsule-fill {isOver85 ? 'fill-api' : ''}"
-                style="width: {Math.min(100, pct)}%"
-              ></div>
-              <div class="threshold-85-marker" title="Batas aman 85%"></div>
-            </div>
-          </div>
+            <ProgressBar
+              value={ratio}
+              color={isOver ? 'var(--expense)' : isNear ? 'var(--warn)' : 'var(--accent)'}
+            />
+
+            {#if isOver}
+              <div class="budget-status-line num over">Lewat +{rupiah(spent - limit)}</div>
+            {:else if isNear}
+              <div class="budget-status-line num near">Hampir habis · sisa {rupiah(limit - spent)}</div>
+            {/if}
+          </button>
         {/each}
       </div>
     </section>
 
-    <!-- 6. Jurnal Transaksi (Recent Transactions) -->
-    <section class="journal-section" aria-label="Jurnal Transaksi">
-      <div class="section-title-row">
-        <h3 class="section-title">Jurnal Transaksi</h3>
-      </div>
-
-      <div class="tx-filter-bar" role="tablist" aria-label="Filter transaksi">
-        <button
-          type="button"
-          class="filter-tab {txFilter === 'semua' ? 'active' : ''}"
-          onclick={() => (txFilter = 'semua')}
-          role="tab"
-          aria-selected={txFilter === 'semua'}
-        >
-          Semua
-        </button>
-        <button
-          type="button"
-          class="filter-tab {txFilter === 'keluar' ? 'active' : ''}"
-          onclick={() => (txFilter = 'keluar')}
-          role="tab"
-          aria-selected={txFilter === 'keluar'}
-        >
-          Keluar
-        </button>
-        <button
-          type="button"
-          class="filter-tab {txFilter === 'masuk' ? 'active' : ''}"
-          onclick={() => (txFilter = 'masuk')}
-          role="tab"
-          aria-selected={txFilter === 'masuk'}
-        >
-          Masuk
-        </button>
+    <!-- 7. Daftar Transaksi (DESIGN.md Section 4.1 & 4.2) -->
+    <section class="transactions-section" aria-label="Daftar Transaksi">
+      <div class="section-title-bar">
+        <h3 class="section-heading">Transaksi</h3>
+        <!-- Filter Tabs -->
+        <div class="filter-group" role="tablist">
+          {#each ['semua', 'keluar', 'masuk'] as f}
+            <button
+              type="button"
+              class="filter-chip"
+              class:selected={txFilter === f}
+              role="tab"
+              aria-selected={txFilter === f}
+              onclick={() => (txFilter = f)}
+            >
+              {f === 'semua' ? 'Semua' : f === 'keluar' ? 'Keluar' : 'Masuk'}
+            </button>
+          {/each}
+        </div>
       </div>
 
       {#if filteredGroupedTransactions.length === 0}
-        <div class="empty-journal-card glass-panel">
-          <div class="sleepy-cat-icon" aria-hidden="true">🐱💤</div>
-          <p class="empty-main-text">Belum ada catatan di sini.</p>
-          <p class="empty-sub-text">Ketuk + untuk menambah.</p>
+        <div class="empty-tx-box">
+          <p class="empty-message">Belum ada transaksi di minggu ini.</p>
+          <button
+            type="button"
+            class="empty-cta-btn"
+            onclick={() => txManager?.openCreate?.(null)}
+          >
+            Catat transaksi pertama
+          </button>
         </div>
       {:else}
-        <div class="journal-groups">
+        <div class="tx-groups-container">
           {#each filteredGroupedTransactions as group}
-            <div class="journal-group">
-              <div class="group-header">
-                <span class="group-day-label">{group.dayLabel}</span>
+            <div class="day-group">
+              <div class="day-group-header">
+                <span class="day-header-label">{group.dayLabel}</span>
                 {#if group.totalKeluar > 0 && txFilter !== 'masuk'}
-                  <span class="group-day-total tabular-nums">
-                    −{formatRp(group.totalKeluar)}
-                  </span>
+                  <span class="day-header-total num">−{rupiah(group.totalKeluar)}</span>
                 {/if}
               </div>
 
-              <div class="group-items">
-                {#each group.items as tx, i}
+              <div class="tx-items-list">
+                {#each group.items as tx}
                   {@const meta = getCategoryMeta(tx.kategori_id)}
-                  <div
-                    class="tx-item-row glass-row interactive-tap animate-stagger {highlightedTxId === tx.id ? 'just-added' : ''}"
-                    style="--i: {i}"
-                    role="button"
-                    tabindex="0"
+                  <TransactionRow
+                    title={tx.catatan || meta?.nama || 'Pengeluaran'}
+                    subtitle={`${meta?.nama ? meta.nama + ' · ' : ''}${formatTime(tx.tanggal)}`}
+                    amount={Number(tx.nominal) || 0}
+                    type={tx.tipe}
                     onclick={() => txManager?.openEdit?.(tx)}
-                    onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && txManager?.openEdit?.(tx)}
-                  >
-                    <div class="tx-item-left">
-                      <div class="tx-badge-orb {meta?.warna || meta?.id || 'jajan'} tipe-{tx.tipe}">
-                        <span>{meta?.ikon || '🍙'}</span>
-                      </div>
-                      <div class="tx-details">
-                        <span class="tx-title">{tx.catatan || meta?.nama || 'Pengeluaran'}</span>
-                        <span class="tx-meta-sub">
-                          {#if tx.catatan && meta?.nama}
-                            {meta.nama} ·
-                          {/if}
-                          {formatTime(tx.tanggal)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div class="tx-item-right font-num tabular-nums">
-                      {#if tx.tipe === 'masuk'}
-                        <span class="amount-masuk">+{formatRp(tx.nominal)}</span>
-                      {:else if tx.tipe === 'tabung'}
-                        <span class="amount-tabung">{formatRp(tx.nominal)}</span>
-                      {:else}
-                        <span class="amount-keluar">−{formatRp(tx.nominal)}</span>
-                      {/if}
-                    </div>
-                  </div>
+                    class={highlightedTxId === tx.id ? 'just-highlighted' : ''}
+                  />
                 {/each}
               </div>
             </div>
@@ -880,7 +736,72 @@
     </section>
   {/if}
 
-  <!-- Modals -->
+  <!-- CatWorld & Pencapaian Modal -->
+  <BottomSheet
+    bind:open={isCatWorldModalOpen}
+    title="CatWorld & Pencapaian"
+    onclose={() => (isCatWorldModalOpen = false)}
+  >
+    <div class="catworld-modal-body">
+      <!-- Mascot Display -->
+      <div class="catworld-mascot-box">
+        <CatWorld
+          r={activeSummary.r}
+          sisa_hari={activeSummary.sisa_hari}
+          streak={streakData.currentStreak}
+          onregister={(fn) => { catReactionCallback = fn; }}
+        />
+      </div>
+
+      <!-- Streak Status Box -->
+      <div class="streak-card-box">
+        <div class="streak-card-header">
+          <span class="streak-card-title">{streakData.streakTitle}</span>
+          <span class="streak-card-count num">🔥 {streakData.currentStreak} hari</span>
+        </div>
+        <div class="streak-dots-track">
+          {#each streakData.last7Days as day}
+            <span class="streak-dot-pill {day.type}" title="{day.dayLabel}: {day.type}">
+              {day.symbol}
+            </span>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Tombol Hari ini tidak jajan -->
+      {#if streakData.canMarkTanpaJajanToday}
+        <Button
+          variant="secondary"
+          full
+          onclick={handleMarkTanpaJajan}
+          class="tanpa-jajan-action-btn"
+        >
+          <span>Hari ini tidak jajan</span>
+          <span>🌙</span>
+        </Button>
+      {/if}
+
+      <!-- Achievements Bar -->
+      <div class="achievements-quick-bar">
+        <div class="achievements-text">
+          <span class="achieve-title-text">Lencana Terkumpul</span>
+          <span class="achieve-count-text num">{displayUnlockedCount} dari {rawBadges.totalBadges || 10} tercapai</span>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onclick={() => {
+            isCatWorldModalOpen = false;
+            handleOpenAchievementSheet();
+          }}
+        >
+          Lihat Semua
+        </Button>
+      </div>
+    </div>
+  </BottomSheet>
+
+  <!-- Full Achievement Modal -->
   <AchievementSheet
     bind:open={isAchievementSheetOpen}
     currentStreak={streakData.currentStreak}
@@ -891,6 +812,7 @@
     onclose={() => (isAchievementSheetOpen = false)}
   />
 
+  <!-- Category Editor Modal -->
   <CategorySheet
     bind:open={isCategorySheetOpen}
     category={selectedCategoryToEdit}
@@ -917,971 +839,9 @@
   .beranda-container {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 32px;
     width: 100%;
     box-sizing: border-box;
-  }
-
-  /* 1. Header Section */
-  .beranda-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .greeting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .greeting-text-group {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .greeting-title {
-    font-family: var(--font-display);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--komorebi);
-    letter-spacing: -0.01em;
-  }
-
-  .greeting-subtitle {
-    font-size: 11px;
-    color: var(--kabut);
-    margin-top: 1px;
-  }
-
-  .streak-badge-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
-    border-radius: 999px;
-    padding: 6px 12px;
-    color: var(--komorebi);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition: transform 120ms ease, border-color 150ms ease, background-color 150ms ease;
-  }
-
-  .streak-badge-btn::before {
-    content: '';
-    position: absolute;
-    inset: -6px;
-  }
-
-  .streak-badge-btn:active {
-    transform: scale(0.96);
-    border-color: var(--edge-bright);
-    background: var(--glass-2);
-  }
-
-  .streak-fire,
-  .badge-icon {
-    font-size: 13px;
-    line-height: 1;
-  }
-
-  .streak-count,
-  .badge-count {
-    color: var(--bara);
-    font-weight: 700;
-  }
-
-  .streak-sep {
-    color: var(--lumut);
-    font-weight: 400;
-  }
-
-  /* Week Switcher Capsule */
-  .week-capsule-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
-    border-radius: 999px;
-    padding: 4px 8px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  .week-nav-arrow {
-    position: relative;
-    border: none;
-    background: transparent;
-    color: var(--komorebi);
-    cursor: pointer;
-    padding: 6px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: opacity 120ms ease, background-color 150ms ease;
-  }
-
-  .week-nav-arrow::before {
-    content: '';
-    position: absolute;
-    inset: -6px;
-  }
-
-  .week-nav-arrow:disabled {
-    opacity: 0.25;
-    cursor: not-allowed;
-  }
-
-  .week-nav-arrow:not(:disabled):active {
-    background: var(--glass-2);
-  }
-
-  .week-capsule-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
-    letter-spacing: -0.01em;
-  }
-
-  /* 2. CatWorld Section */
-  .catworld-section {
-    width: 100%;
-  }
-
-  /* 3. Income Banner */
-  .income-banner {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    background: rgba(217, 119, 6, 0.08);
-    border: 1px solid rgba(217, 119, 6, 0.25);
-    border-radius: 20px;
-    padding: 12px 16px;
-    box-sizing: border-box;
-  }
-
-  .banner-text {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
-  }
-
-  .banner-icon {
-    font-size: 18px;
-  }
-
-  .banner-action-btn {
-    align-self: flex-start;
-    border: none;
-    background: linear-gradient(135deg, var(--bara) 0%, #B45309 100%);
-    color: var(--on-bara);
-    font-size: 12px;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 999px;
-    cursor: pointer;
-    box-shadow: var(--glow-bara);
-    transition: transform 100ms ease;
-  }
-
-  .banner-action-btn:active {
-    transform: scale(0.96);
-  }
-
-  /* 4. Aether Hero Core */
-  .aether-hero {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 18px;
-    border-radius: 28px;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  }
-
-  .hero-top-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .hero-label-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .hero-label {
-    font-size: 13px;
-    color: var(--kabut);
-    font-weight: 500;
-  }
-
-  .hero-wallet-pill {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--aether);
-    background: rgba(59, 154, 184, 0.10);
-    border: 1px solid rgba(59, 154, 184, 0.25);
-    padding: 2px 8px;
-    border-radius: 999px;
-  }
-
-  .privacy-toggle-btn {
-    border: none;
-    background: transparent;
-    color: var(--kabut);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
-    border-radius: 50%;
-    transition: color 150ms ease;
-  }
-
-  .privacy-toggle-btn:hover {
-    color: var(--komorebi);
-  }
-
-  .hero-balance-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .hero-balance {
-    font-size: 32px;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--aether);
-    text-shadow: var(--glow-aether);
-    letter-spacing: -0.02em;
-  }
-
-  .hero-balance.over-budget {
-    color: var(--api);
-    text-shadow: var(--glow-api);
-  }
-
-  .hero-status-badge {
-    display: flex;
-    align-items: center;
-  }
-
-  .badge-ratio {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--aether);
-    background: rgba(59, 154, 184, 0.10);
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid rgba(59, 154, 184, 0.25);
-  }
-
-  .badge-over {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--api);
-    background: rgba(209, 67, 67, 0.10);
-    border: 1px solid rgba(209, 67, 67, 0.28);
-    padding: 4px 10px;
-    border-radius: 999px;
-  }
-
-  /* Hero stats grid */
-  .hero-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .hero-stat-box {
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
-    border-radius: 16px;
-    padding: 10px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    box-sizing: border-box;
-    text-align: left;
-    cursor: pointer;
-    font-family: inherit;
-    transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
-  }
-
-  .hero-stat-box:hover {
-    background: var(--glass-2);
-  }
-
-  .hero-stat-box:active {
-    transform: scale(0.97);
-  }
-
-  .hero-stat-box.masuk {
-    border-color: rgba(56, 161, 105, 0.22);
-  }
-
-  .hero-stat-box.keluar {
-    border-color: rgba(209, 67, 67, 0.22);
-  }
-
-  .hero-stat-box.tabung {
-    border-color: rgba(217, 119, 6, 0.22);
-  }
-
-  .stat-icon-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--kabut);
-  }
-
-  .stat-arrow.down {
-    color: var(--tunas);
-    font-weight: 800;
-  }
-
-  .stat-arrow.up {
-    color: var(--api);
-    font-weight: 800;
-  }
-
-  .stat-arrow.piggy {
-    font-size: 11px;
-    line-height: 1;
-    color: var(--bara);
-  }
-
-  .stat-value {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-
-  .hero-stat-box.masuk .stat-value {
-    color: var(--tunas);
-    text-shadow: 0 0 10px rgba(56, 161, 105, 0.16);
-  }
-
-  .hero-stat-box.keluar .stat-value {
-    color: var(--api);
-    text-shadow: 0 0 10px rgba(209, 67, 67, 0.16);
-  }
-
-  .hero-stat-box.tabung .stat-value {
-    color: var(--bara);
-    text-shadow: 0 0 10px rgba(217, 119, 6, 0.16);
-  }
-
-  /* Daily Limit Meter */
-  .daily-limit-card {
-    background: rgba(0, 0, 0, 0.22);
-    border: 1px solid var(--edge-soft);
-    border-radius: 18px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition: border-color 200ms ease, box-shadow 200ms ease;
-  }
-
-  .daily-limit-card.danger {
-    border-color: rgba(209, 67, 67, 0.35);
-    box-shadow: 0 0 14px rgba(209, 67, 67, 0.12);
-  }
-
-  .daily-limit-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .daily-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .daily-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--kabut);
-  }
-
-  .danger-badge {
-    font-size: 10px;
-    font-weight: 800;
-    color: #FFFFFF;
-    background: var(--api);
-    padding: 2px 7px;
-    border-radius: 999px;
-    box-shadow: var(--glow-api);
-  }
-
-  .daily-spent-now {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--komorebi);
-  }
-
-  .daily-track-wrapper {
-    position: relative;
-    width: 100%;
-    height: 10px;
-    display: flex;
-    align-items: center;
-  }
-
-  .daily-progress-track {
-    width: 100%;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .daily-progress-fill {
-    height: 100%;
-    border-radius: 999px;
-    transition: background-color 300ms ease-out;
-  }
-
-  .daily-progress-fill.state-normal {
-    background: linear-gradient(90deg, var(--tunas) 0%, var(--bara) 100%);
-    box-shadow: var(--glow-tunas);
-  }
-
-  .daily-progress-fill.state-warning {
-    background: var(--bara);
-    box-shadow: var(--glow-bara);
-  }
-
-  .daily-progress-fill.state-danger {
-    background: var(--api);
-    box-shadow: var(--glow-api);
-  }
-
-  .cat-meter-avatar {
-    position: absolute;
-    top: -8px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--senja);
-    border: 1.5px solid var(--bara);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), var(--glow-bara);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    transform: translateX(-50%);
-    pointer-events: none;
-    transition: left 350ms ease-out, border-color 300ms ease-out;
-    z-index: 3;
-  }
-
-  .cat-meter-avatar.state-danger {
-    border-color: var(--api);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), var(--glow-api);
-  }
-
-  .daily-limit-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-  }
-
-  .daily-subtext {
-    font-size: 11px;
-    color: var(--kabut);
-    font-weight: 500;
-  }
-
-  .daily-subtext.danger {
-    color: var(--api);
-    font-weight: 700;
-  }
-
-  /* 7-Day Streak Strip */
-  .streak-strip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 10px;
-    border-top: 1px solid var(--edge-soft);
-    cursor: pointer;
-    border-radius: 8px;
-    transition: opacity 120ms ease;
-  }
-
-  .streak-strip:active {
-    opacity: 0.8;
-  }
-
-  .streak-dots {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .streak-dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    line-height: 1;
-    box-sizing: border-box;
-  }
-
-  .streak-dot.hemat {
-    background: rgba(255, 184, 77, 0.16);
-    color: var(--bara);
-    border: 1.5px solid rgba(255, 184, 77, 0.45);
-  }
-
-  .streak-dot.lewat {
-    background: rgba(255, 107, 74, 0.16);
-    color: var(--api);
-    border: 1.5px solid rgba(255, 107, 74, 0.45);
-  }
-
-  .streak-dot.kosong {
-    background: var(--glass-1);
-    color: var(--lumut);
-    border: 1.5px solid var(--edge-soft);
-  }
-
-  .streak-dot.today {
-    background: transparent;
-    color: var(--komorebi);
-    border: 1.5px dashed var(--aether);
-  }
-
-  .streak-title-text {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--kabut);
-    text-align: right;
-  }
-
-  .tanpa-jajan-glass-btn {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-bright);
-    border-radius: 14px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: transform 120ms ease, background-color 150ms ease;
-  }
-
-  .tanpa-jajan-glass-btn:active {
-    transform: scale(0.98);
-    background: var(--glass-2);
-  }
-
-  .moon-icon {
-    font-size: 14px;
-  }
-
-  /* 5. Kantong Anggaran */
-  .envelopes-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .section-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2px;
-  }
-
-  .section-title {
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--komorebi);
-    letter-spacing: -0.01em;
-  }
-
-  .manage-budget-chip {
-    border: none;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--aether);
-    background: rgba(59, 154, 184, 0.08);
-    border: 1px solid rgba(59, 154, 184, 0.22);
-    border-radius: 999px;
-    padding: 4px 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: transform 120ms ease, background-color 150ms ease;
-  }
-
-  .manage-budget-chip:active {
-    transform: scale(0.95);
-    background: rgba(59, 154, 184, 0.16);
-  }
-
-  .chip-arrow {
-    font-size: 14px;
-    line-height: 1;
-  }
-
-  .envelopes-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .envelope-card {
-    padding: 14px 16px;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    cursor: pointer;
-    transition: transform 120ms ease, border-color 150ms ease;
-  }
-
-  .envelope-card:active {
-    transform: scale(0.985);
-    border-color: var(--edge-bright);
-  }
-
-  .envelope-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .envelope-identity {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .envelope-icon-orb {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 0 12px rgba(94, 214, 230, 0.12);
-  }
-
-  .envelope-name-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .envelope-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
-  }
-
-  .envelope-limits {
-    font-size: 12px;
-    color: var(--kabut);
-    font-weight: 500;
-  }
-
-  .envelope-pct-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-  }
-
-  .envelope-pct {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--kabut);
-  }
-
-  .envelope-pct.text-api {
-    color: var(--api);
-    text-shadow: var(--glow-api);
-  }
-
-  .over-chip {
-    font-size: 10px;
-    font-weight: 800;
-    color: var(--api);
-  }
-
-  .capsule-track {
-    position: relative;
-    width: 100%;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .capsule-fill {
-    height: 100%;
-    background: var(--aether);
-    border-radius: 999px;
-    box-shadow: var(--glow-aether);
-  }
-
-  .capsule-fill.fill-api {
-    background: var(--api);
-    box-shadow: var(--glow-api);
-  }
-
-  .threshold-85-marker {
-    position: absolute;
-    left: 85%;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: rgba(255, 107, 74, 0.6);
-    z-index: 2;
-  }
-
-  /* 6. Jurnal Transaksi */
-  .journal-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 4px;
-  }
-
-  .tx-filter-bar {
-    display: flex;
-    gap: 6px;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-soft);
-    padding: 4px;
-    border-radius: 14px;
-  }
-
-  .filter-tab {
-    flex: 1;
-    border: none;
-    background: transparent;
-    color: var(--kabut);
-    font-size: 12px;
-    font-weight: 600;
-    padding: 6px 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 150ms ease, color 150ms ease;
-  }
-
-  .filter-tab.active {
-    background: var(--glass-3);
-    color: var(--komorebi);
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .empty-journal-card {
-    padding: 36px 20px;
-    border-radius: 20px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .sleepy-cat-icon {
-    font-size: 32px;
-    margin-bottom: 4px;
-  }
-
-  .empty-main-text {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
-  }
-
-  .empty-sub-text {
-    font-size: 12px;
-    color: var(--kabut);
-  }
-
-  .journal-groups {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .journal-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 4px;
-  }
-
-  .group-day-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--kabut);
-  }
-
-  .group-day-total {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--api);
-  }
-
-  .group-items {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .tx-item-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: transform 120ms ease, border-color 150ms ease;
-  }
-
-  .tx-item-row:active {
-    transform: scale(0.985);
-    border-color: var(--edge-bright);
-  }
-
-  .tx-item-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .tx-badge-orb {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
-    flex-shrink: 0;
-  }
-
-  .tx-badge-orb.tipe-masuk {
-    border-color: rgba(56, 161, 105, 0.35);
-    box-shadow: 0 0 8px rgba(56, 161, 105, 0.14);
-  }
-
-  .tx-badge-orb.tipe-keluar {
-    border-color: rgba(209, 67, 67, 0.35);
-    box-shadow: 0 0 8px rgba(209, 67, 67, 0.14);
-  }
-
-  .tx-badge-orb.tipe-tabung {
-    border-color: rgba(217, 119, 6, 0.35);
-    box-shadow: 0 0 8px rgba(217, 119, 6, 0.14);
-  }
-
-  .tx-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .tx-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
-  }
-
-  .tx-meta-sub {
-    font-size: 11px;
-    color: var(--kabut);
-  }
-
-  .tx-item-right {
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .amount-masuk {
-    color: var(--tunas);
-    text-shadow: 0 0 10px rgba(74, 222, 128, 0.25);
-  }
-
-  .amount-keluar {
-    color: var(--api);
-    text-shadow: 0 0 10px rgba(255, 92, 92, 0.25);
-  }
-
-  .amount-tabung {
-    color: var(--bara);
-    text-shadow: 0 0 10px rgba(251, 191, 36, 0.25);
-  }
-
-  /* Flash highlight 1.2s for newly added/edited row (PRD 12.4) */
-  .tx-item-row.just-added {
-    animation: flashHighlight 1.2s ease-out;
-  }
-
-  @keyframes flashHighlight {
-    0% {
-      background: rgba(255, 184, 77, 0.25);
-      border-color: var(--bara);
-      transform: scale(1.02);
-    }
-    100% {
-      background: var(--glass-1);
-      border-color: var(--edge-soft);
-      transform: scale(1);
-    }
   }
 
   /* Pull to refresh */
@@ -1889,67 +849,555 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 14px;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--kabut);
-    margin: 0 auto;
-    width: fit-content;
+    padding: 8px 0;
+    font-size: var(--fs-cap, 13px);
+    color: var(--fg-muted);
   }
 
-  /* Skeleton Loading State */
+  /* Skeleton */
   .skeleton-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px 0;
+  }
+
+  .skeleton-line {
+    background: var(--track);
+    border-radius: var(--r-bar, 4px);
+  }
+
+  /* 1. Header */
+  .beranda-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .header-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .greeting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .greeting-title {
+    font-size: var(--fs-sm, 14px);
+    font-weight: 500;
+    color: var(--fg-muted);
+    margin: 0;
+  }
+
+  .week-switch-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .week-nav-btn {
+    border: none;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 18px;
+    padding: 0 4px;
+    cursor: pointer;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 120ms var(--ease);
+  }
+
+  .week-nav-btn:hover:not(:disabled) {
+    color: var(--fg);
+  }
+
+  .week-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .week-text-label {
+    font-size: var(--fs-cap, 13px);
+    font-weight: 500;
+    color: var(--fg);
+  }
+
+  /* Tombol Akses CatWorld (min 44x44px tap target) */
+  .catworld-trigger-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    background: var(--bg-raised);
+    color: var(--fg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: opacity 120ms var(--ease);
+  }
+
+  .catworld-trigger-btn:active {
+    opacity: 0.8;
+  }
+
+  .cat-btn-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .cat-btn-streak {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--warn);
+    line-height: 1;
+  }
+
+  /* Income Banner */
+  .income-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    background: var(--bg-raised);
+    font-size: var(--fs-sm, 14px);
+    color: var(--fg);
+  }
+
+  .income-banner-action {
+    border: none;
+    background: var(--accent);
+    color: var(--on-accent);
+    padding: 8px 12px;
+    border-radius: var(--r-bar, 4px);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* 2. Hero Section */
+  .hero-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 0;
+  }
+
+  .hero-top-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hero-label {
+    font-size: var(--fs-sm, 14px);
+    color: var(--fg-muted);
+  }
+
+  .wallet-pill-btn {
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg-muted);
+    border-radius: var(--r, 10px);
+    padding: 4px 10px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: opacity 120ms var(--ease);
+  }
+
+  .wallet-pill-btn:active {
+    opacity: 0.8;
+  }
+
+  .wallet-pill-val {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .hero-amount-row {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .hero-amount {
+    font-family: var(--font-display);
+    font-size: var(--fs-hero, clamp(40px, 11vw, 48px));
+    font-weight: 400;
+    color: var(--fg);
+    line-height: 1.1;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-amount.over-limit {
+    color: var(--expense);
+  }
+
+  .hero-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--fs-sm, 14px);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-text {
+    line-height: 1;
+  }
+
+  /* 3. Daily Allowance */
+  .daily-allowance-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .daily-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--fs-cap, 13px);
+  }
+
+  .daily-label {
+    color: var(--fg-muted);
+  }
+
+  .daily-details {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .daily-over {
+    color: var(--expense);
+    font-weight: 600;
+  }
+
+  /* 4. Kantong Anggaran */
+  .budgets-section {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
-  .skeleton-block {
-    background: linear-gradient(90deg, rgba(190, 255, 235, 0.04) 25%, rgba(190, 255, 235, 0.10) 50%, rgba(190, 255, 235, 0.04) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    border-radius: 16px;
-    border: 1px solid var(--edge-soft);
+  .section-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+  .section-heading {
+    font-family: var(--font-ui);
+    font-size: var(--fs-h, 18px);
+    font-weight: 600;
+    color: var(--fg);
+    margin: 0;
   }
 
-  .skeleton-cat {
-    height: 140px;
-    border-radius: 24px;
+  .section-sub-link {
+    border: none;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: var(--fs-sm, 14px);
+    cursor: pointer;
+    padding: 4px 0;
   }
 
-  .skeleton-nav {
-    height: 36px;
-    width: 60%;
-    margin: 0 auto;
-    border-radius: 999px;
+  .section-sub-link:hover {
+    color: var(--fg);
   }
 
-  .skeleton-card {
-    height: 120px;
-    border-radius: 28px;
+  .budget-rows-list {
+    display: flex;
+    flex-direction: column;
   }
 
-  .skeleton-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+  .budget-item-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 0;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    color: inherit;
+    transition: opacity 120ms var(--ease);
+  }
+
+  .budget-item-row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .budget-item-row:active {
+    opacity: 0.7;
+  }
+
+  .budget-top-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .budget-title-wrap {
+    display: flex;
+    align-items: center;
     gap: 8px;
   }
 
-  .skeleton-pill {
-    height: 60px;
-    border-radius: 16px;
+  .budget-emoji {
+    font-size: 16px;
   }
 
-  .skeleton-category {
-    height: 80px;
-    border-radius: 20px;
+  .budget-name {
+    font-size: var(--fs-body, 16px);
+    font-weight: 500;
+    color: var(--fg);
+  }
+
+  .budget-values {
+    font-size: var(--fs-sm, 14px);
+  }
+
+  .budget-spent-val {
+    font-weight: 500;
+    color: var(--fg);
+  }
+
+  .budget-spent-val.val-over {
+    color: var(--expense);
+  }
+
+  .budget-limit-val {
+    color: var(--fg-muted);
+  }
+
+  .budget-status-line {
+    font-size: var(--fs-cap, 13px);
+  }
+
+  .budget-status-line.over {
+    color: var(--expense);
+  }
+
+  .budget-status-line.near {
+    color: var(--warn);
+  }
+
+  /* 5. Transaksi Section */
+  .transactions-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-chip {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--r, 10px);
+    cursor: pointer;
+    transition: background-color 120ms var(--ease), color 120ms var(--ease);
+  }
+
+  .filter-chip.selected {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+
+  .empty-tx-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 16px;
+    gap: 12px;
+    text-align: center;
+    border: 1px dashed var(--line);
+    border-radius: var(--r, 10px);
+  }
+
+  .empty-message {
+    font-size: var(--fs-sm, 14px);
+    color: var(--fg-muted);
+    margin: 0;
+  }
+
+  .empty-cta-btn {
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg);
+    padding: 8px 16px;
+    border-radius: var(--r, 10px);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .tx-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .day-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .day-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0 6px;
+    font-size: var(--fs-sm, 14px);
+    color: var(--fg-muted);
+  }
+
+  .day-header-label {
+    font-weight: 500;
+  }
+
+  .day-header-total {
+    font-weight: 500;
+  }
+
+  .tx-items-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.just-highlighted) {
+    animation: flashRow 1.2s ease-out;
+  }
+
+  @keyframes flashRow {
+    0% { background: var(--track); }
+    100% { background: transparent; }
+  }
+
+  /* CatWorld Modal Content */
+  .catworld-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .catworld-mascot-box {
+    width: 100%;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .streak-card-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+  }
+
+  .streak-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .streak-card-title {
+    font-size: var(--fs-sm, 14px);
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .streak-card-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--warn);
+  }
+
+  .streak-dots-track {
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+  }
+
+  .streak-dot-pill {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    border-radius: var(--r-bar, 4px);
+    background: var(--track);
+    font-size: 12px;
+    color: var(--fg);
+  }
+
+  .achievements-quick-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    background: var(--bg);
+  }
+
+  .achievements-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .achieve-title-text {
+    font-size: var(--fs-sm, 14px);
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .achieve-count-text {
+    font-size: var(--fs-cap, 13px);
+    color: var(--fg-muted);
   }
 </style>

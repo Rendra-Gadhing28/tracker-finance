@@ -355,9 +355,8 @@
   }
 
   .donut-slice:focus-visible {
-    stroke: var(--aether);
+    stroke: var(--accent);
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 8px var(--aether));
   }
 
   .donut-slice.dimmed {

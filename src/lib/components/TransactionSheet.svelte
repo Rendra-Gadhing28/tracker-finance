@@ -1168,22 +1168,22 @@
     margin-top: 4px;
   }
 
-  /* Custom submit gradients matching type */
+  /* Custom submit styling matching type */
   :global(.btn-submit-keluar) {
-    background: linear-gradient(135deg, var(--api) 0%, #991B1B 100%) !important;
+    background: var(--expense) !important;
     color: #FFF !important;
-    box-shadow: var(--glow-api) !important;
+    box-shadow: none !important;
   }
 
   :global(.btn-submit-masuk) {
-    background: linear-gradient(135deg, var(--tunas) 0%, #15803D 100%) !important;
-    color: #FFF !important;
-    box-shadow: var(--glow-tunas) !important;
+    background: var(--accent) !important;
+    color: var(--on-accent) !important;
+    box-shadow: none !important;
   }
 
   :global(.btn-submit-tabung) {
-    background: linear-gradient(135deg, var(--bara) 0%, #B45309 100%) !important;
-    color: var(--on-bara) !important;
-    box-shadow: var(--glow-bara) !important;
+    background: var(--warn) !important;
+    color: #FFF !important;
+    box-shadow: none !important;
   }
 </style>

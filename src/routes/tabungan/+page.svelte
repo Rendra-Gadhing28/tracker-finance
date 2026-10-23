@@ -368,14 +368,14 @@
     font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
-    color: var(--komorebi);
+    color: var(--fg);
     letter-spacing: -0.01em;
     margin: 0;
   }
 
   .page-subtitle {
     font-size: 11px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     margin-top: 1px;
   }
 
@@ -383,17 +383,17 @@
     border: none;
     font-size: 12px;
     font-weight: 700;
-    color: #FFFFFF;
-    background: linear-gradient(135deg, var(--aether) 0%, #2B8A9E 100%);
-    box-shadow: var(--glow-aether);
-    border-radius: 999px;
+    color: var(--on-accent);
+    background: var(--accent);
+    box-shadow: none;
+    border-radius: var(--r, 10px);
     padding: 6px 14px;
     cursor: pointer;
-    transition: transform 120ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .new-goal-header-btn:active {
-    transform: scale(0.96);
+    opacity: 0.85;
   }
 
   .new-goal-header-btn:disabled {
@@ -407,9 +407,9 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: 18px;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: var(--r, 10px);
+    box-shadow: none;
   }
 
   .vault-header {
@@ -426,31 +426,31 @@
 
   .vault-label {
     font-size: 13px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     font-weight: 500;
   }
 
   .vault-pill {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--aether);
-    background: rgba(59, 154, 184, 0.10);
-    border: 1px solid rgba(59, 154, 184, 0.25);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--line);
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: var(--r, 10px);
   }
 
   .vault-crystal-orb {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--glass-1);
-    border: 1px solid var(--edge-bright);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    box-shadow: var(--glow-aether);
+    box-shadow: none;
   }
 
   .vault-amount-row {
@@ -459,11 +459,12 @@
   }
 
   .vault-amount {
+    font-family: var(--font-display);
     font-size: 32px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.1;
-    color: var(--bara);
-    text-shadow: var(--glow-bara);
+    color: var(--fg);
+    text-shadow: none;
     letter-spacing: -0.02em;
     margin: 0;
   }
@@ -472,10 +473,10 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: rgba(0, 0, 0, 0.22);
-    border: 1px solid var(--edge-soft);
-    border-radius: 16px;
-    padding: 10px 14px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
+    padding: 12px 14px;
   }
 
   .weekly-meta {
@@ -487,32 +488,32 @@
 
   .weekly-label {
     font-weight: 600;
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   .weekly-denom {
-    color: var(--kabut);
+    color: var(--fg-muted);
     font-weight: 400;
   }
 
   .weekly-pct {
     font-weight: 700;
-    color: var(--bara);
+    color: var(--warn);
   }
 
   .weekly-track {
     width: 100%;
     height: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    background: var(--track);
+    border-radius: var(--r-bar, 4px);
     overflow: hidden;
   }
 
   .weekly-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--bara) 0%, #B45309 100%);
-    box-shadow: var(--glow-bara);
-    border-radius: 999px;
+    background: var(--warn);
+    box-shadow: none;
+    border-radius: var(--r-bar, 4px);
   }
 
   /* Tabungan Umum */
@@ -520,8 +521,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: 20px;
+    padding: 16px;
+    border-radius: var(--r, 10px);
     gap: 12px;
   }
 
@@ -535,13 +536,13 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    box-shadow: 0 0 10px rgba(217, 119, 6, 0.12);
+    box-shadow: none;
   }
 
   .umum-text-group {
@@ -551,14 +552,14 @@
   }
 
   .umum-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
   }
 
   .umum-sub {
-    font-size: 11px;
-    color: var(--kabut);
+    font-size: 12px;
+    color: var(--fg-muted);
   }
 
   .umum-right {
@@ -568,27 +569,25 @@
   }
 
   .umum-amount {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--bara);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--warn);
   }
 
   .quick-tabung-chip {
-    border: none;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--bara);
-    background: rgba(217, 119, 6, 0.10);
-    border: 1px solid rgba(217, 119, 6, 0.25);
-    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--warn);
+    background: transparent;
+    border-radius: var(--r, 10px);
     padding: 4px 10px;
     cursor: pointer;
-    transition: all 120ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .quick-tabung-chip:active {
-    transform: scale(0.95);
-    background: rgba(217, 119, 6, 0.18);
+    opacity: 0.8;
   }
 
   /* Section Header */
@@ -601,17 +600,17 @@
   }
 
   .section-title {
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-family: var(--font-ui);
+    font-size: var(--fs-h, 18px);
+    font-weight: 600;
+    color: var(--fg);
     margin: 0;
   }
 
   .max-note {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--api);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--expense);
   }
 
   /* Goals List */
@@ -624,16 +623,16 @@
   .goal-card {
     display: flex;
     flex-direction: column;
-    padding: 14px 16px;
-    border-radius: 22px;
+    padding: 16px;
+    border-radius: var(--r, 10px);
     cursor: pointer;
     gap: 10px;
-    transition: transform 120ms ease, border-color 150ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .goal-card:active {
-    transform: scale(0.985);
-    border-color: var(--edge-bright);
+    opacity: 0.85;
+    border-color: var(--line);
   }
 
   .goal-card-top {
@@ -654,13 +653,13 @@
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: var(--glass-2);
-    border: 1px solid var(--edge-soft);
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 0 10px rgba(59, 154, 184, 0.12);
+    box-shadow: none;
   }
 
   .goal-icon {
@@ -676,29 +675,29 @@
   }
 
   .goal-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .goal-eta-badge {
-    font-size: 11px;
-    color: var(--kabut);
-    font-weight: 500;
+    font-size: 12px;
+    color: var(--fg-muted);
+    font-weight: 400;
   }
 
   .goal-pct-badge {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--bara);
+    font-weight: 600;
+    color: var(--warn);
     flex-shrink: 0;
   }
 
   .pct-over {
-    color: var(--tunas);
+    color: var(--accent);
   }
 
   /* Walking Cat Progress Track */
@@ -712,17 +711,17 @@
   .goal-track {
     position: relative;
     flex: 1;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    height: 8px;
+    background: var(--track);
+    border-radius: var(--r-bar, 4px);
     overflow: visible;
   }
 
   .goal-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--bara) 0%, #B45309 100%);
-    box-shadow: var(--glow-bara);
-    border-radius: 999px;
+    background: var(--warn);
+    box-shadow: none;
+    border-radius: var(--r-bar, 4px);
   }
 
   .walking-cat {
@@ -733,7 +732,6 @@
     transition: left 400ms ease-out;
     pointer-events: none;
     user-select: none;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
   }
 
   .finish-flag {
@@ -748,7 +746,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .goal-nominal-group {
@@ -758,31 +756,30 @@
   }
 
   .goal-collected {
-    font-weight: 700;
-    color: var(--bara);
+    font-weight: 600;
+    color: var(--warn);
   }
 
   .goal-target-sep {
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .goal-target-val {
-    color: var(--kabut);
-    font-weight: 500;
+    color: var(--fg-muted);
+    font-weight: 400;
   }
 
   .quick-add-btn {
     position: relative;
-    border: none;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--bara);
-    background: rgba(217, 119, 6, 0.10);
-    border: 1px solid rgba(217, 119, 6, 0.25);
-    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--warn);
+    background: transparent;
+    border-radius: var(--r, 10px);
     padding: 4px 12px;
     cursor: pointer;
-    transition: all 120ms ease;
+    transition: opacity 120ms var(--ease);
   }
 
   .quick-add-btn::before {
@@ -792,12 +789,12 @@
   }
 
   .quick-add-btn:hover {
-    border-color: var(--edge-bright);
-    background: var(--glass-3);
+    border-color: var(--line);
+    background: var(--track);
   }
 
   .quick-add-btn:active {
-    transform: scale(0.95);
+    opacity: 0.8;
   }
 
   /* Collapsible Reached Section */
@@ -816,22 +813,22 @@
     border: none;
     padding: 6px 2px;
     cursor: pointer;
-    font-family: var(--font-display);
+    font-family: var(--font-ui);
     font-size: 14px;
-    font-weight: 700;
-    color: var(--kabut);
+    font-weight: 600;
+    color: var(--fg-muted);
     text-align: left;
-    border-radius: 8px;
+    border-radius: var(--r, 10px);
     transition: color 150ms ease;
   }
 
   .reached-collapse-trigger:focus-visible {
-    outline: 2px solid var(--aether);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
   .reached-collapse-trigger:hover {
-    color: var(--komorebi);
+    color: var(--fg);
   }
 
   .arrow-icon {
@@ -853,19 +850,19 @@
   }
 
   .goal-icon-halo.reached {
-    box-shadow: 0 0 10px rgba(56, 161, 105, 0.16);
-    border-color: rgba(56, 161, 105, 0.35);
+    box-shadow: none;
+    border-color: var(--line);
   }
 
   .reached-tag {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--tunas);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
   }
 
   .goal-extra {
-    font-weight: 700;
-    color: var(--tunas);
+    font-weight: 600;
+    color: var(--accent);
   }
 
   /* Empty State */
@@ -876,7 +873,7 @@
     justify-content: center;
     text-align: center;
     padding: 36px 20px;
-    border-radius: 24px;
+    border-radius: var(--r, 10px);
     gap: 8px;
   }
 
@@ -900,14 +897,14 @@
   .empty-title {
     font-family: var(--font-display);
     font-size: 17px;
-    font-weight: 700;
-    color: var(--komorebi);
+    font-weight: 600;
+    color: var(--fg);
     margin: 0;
   }
 
   .empty-desc {
     font-size: 13px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     margin: 0;
   }
 

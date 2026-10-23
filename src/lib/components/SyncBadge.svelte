@@ -102,27 +102,24 @@
     align-items: center;
     gap: 7px;
     min-height: 32px;
-    padding: 4px 12px;
-    border-radius: var(--radius-chip, 999px);
-    border: 1px solid var(--edge-soft);
-    background: var(--glass-1);
-    color: var(--kabut);
+    padding: 4px 10px;
+    border-radius: var(--r, 10px);
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--fg-muted);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     box-sizing: border-box;
     user-select: none;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+    transition: opacity 120ms var(--ease);
   }
 
   .sync-badge:hover,
   .sync-badge:active {
-    background: var(--glass-2);
-    border-color: var(--edge-bright);
-    color: var(--komorebi);
+    opacity: 0.85;
+    color: var(--fg);
   }
 
   .sync-dot {
@@ -134,26 +131,23 @@
 
   .sync-badge.status-ok .sync-dot,
   .sync-dot-inline.status-ok {
-    background-color: var(--tunas);
-    box-shadow: 0 0 8px var(--tunas);
+    background-color: var(--accent);
   }
 
   .sync-badge.status-saving .sync-dot,
   .sync-dot-inline.status-saving {
-    background-color: var(--bara);
-    box-shadow: 0 0 8px var(--bara);
+    background-color: var(--warn);
     animation: dotPulse 1.4s ease-in-out infinite;
   }
 
   .sync-badge.status-offline .sync-dot,
   .sync-dot-inline.status-offline {
-    background-color: var(--lumut);
+    background-color: var(--fg-muted);
   }
 
   .sync-badge.status-error .sync-dot,
   .sync-dot-inline.status-error {
-    background-color: var(--api);
-    box-shadow: 0 0 8px var(--api);
+    background-color: var(--expense);
   }
 
   .sync-dot-inline {
@@ -165,7 +159,7 @@
 
   .sync-text {
     line-height: 1;
-    color: var(--kabut);
+    color: var(--fg-muted);
   }
 
   .popover-backdrop {
@@ -179,14 +173,12 @@
     top: calc(100% + 8px);
     left: 0;
     min-width: 220px;
-    background: rgba(8, 14, 22, 0.95);
-    border: 1px solid var(--edge-soft);
-    border-radius: 16px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--r, 10px);
     padding: 12px 14px;
     z-index: 111;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: none;
     animation: popoverFade 150ms ease-out;
   }
 
@@ -195,13 +187,13 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: var(--komorebi);
+    color: var(--fg);
     margin-bottom: 6px;
   }
 
   .popover-desc {
     font-size: 12px;
-    color: var(--kabut);
+    color: var(--fg-muted);
     line-height: 1.4;
   }
 
