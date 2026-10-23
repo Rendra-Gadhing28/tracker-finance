@@ -629,3 +629,53 @@ export function calculateStats({
     hasData: breakdown.total > 0
   };
 }
+
+/**
+ * Calculates daily spending for the last 7 calendar days up to todayDate (WIB).
+ *
+ * @param {Object} options
+ * @param {Array} [options.transactions=[]]
+ * @param {Date|string|number} [options.todayDate=new Date()]
+ * @returns {{ days: Array<{ date: Date, label: string, shortLabel: string, nominal: number, value: number, isToday: boolean }>, total: number, average: number }}
+ */
+export function calculateLast7DaysSpending({
+  transactions = [],
+  todayDate = new Date()
+} = {}) {
+  const today = todayDate instanceof Date ? todayDate : new Date(todayDate);
+  const todayParts = getWIBParts(today);
+  const keluarTxs = (transactions || []).filter((tx) => tx.tipe === 'keluar');
+  const days = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const dayStart = createWIBDate(todayParts.year, todayParts.month, todayParts.date - i);
+    const dayEnd = createWIBDate(todayParts.year, todayParts.month, todayParts.date - i + 1);
+    const dayParts = getWIBParts(dayStart);
+
+    const nominal = keluarTxs
+      .filter((tx) => {
+        const d = new Date(tx.tanggal).getTime();
+        return d >= dayStart.getTime() && d < dayEnd.getTime();
+      })
+      .reduce((sum, tx) => sum + (Math.round(Number(tx.nominal)) || 0), 0);
+
+    days.push({
+      date: dayStart,
+      label: INDO_DAYS[dayParts.day],
+      shortLabel: INDO_DAYS[dayParts.day].slice(0, 3),
+      nominal,
+      value: nominal,
+      isToday: i === 0
+    });
+  }
+
+  const total = days.reduce((sum, d) => sum + d.nominal, 0);
+  const average = Math.round(total / 7);
+
+  return {
+    days,
+    total,
+    average
+  };
+}
+

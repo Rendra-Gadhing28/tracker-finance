@@ -10,6 +10,7 @@
   import ProgressBar from '$lib/components/ProgressBar.svelte';
   import StatStrip from '$lib/components/StatStrip.svelte';
   import TransactionRow from '$lib/components/TransactionRow.svelte';
+  import ExpenseLineChart from '$lib/components/ExpenseLineChart.svelte';
   import { formatRp } from '$lib/money.js';
   import { rupiah, compact } from '$lib/format.js';
   import {
@@ -18,6 +19,7 @@
     calculateBudgetFormulas,
     getWIBParts
   } from '$lib/week.js';
+  import { calculateLast7DaysSpending } from '$lib/stats.js';
   import {
     budgets,
     transactions,
@@ -168,6 +170,24 @@
   const dailySpentPct = $derived.by(() => {
     if (dailyJatah <= 0) return 0;
     return Math.round((dailySpent / dailyJatah) * 100);
+  });
+
+  // 7 hari terakhir spending and daily budget limit
+  const last7DaysData = $derived.by(() => {
+    const _tick = $ticker;
+    return calculateLast7DaysSpending({
+      transactions: $transactions || [],
+      todayDate: new Date()
+    });
+  });
+
+  const dailyBudgetLimit = $derived.by(() => {
+    if (dailyJatah > 0) return dailyJatah;
+    const weeklyLimit =
+      ($budgets || [])
+        .filter((b) => b.tipe === 'keluar')
+        .reduce((sum, b) => sum + (Number(b.limit_mingguan) || 0), 0) || 116000;
+    return Math.round(weeklyLimit / 7);
   });
 
   // Group transactions by date descending
@@ -618,7 +638,20 @@
       </section>
     {/if}
 
-    <!-- 6. Kantong Anggaran (DESIGN.md Section 4.6 BudgetRow) -->
+    <!-- 6. Grafik Garis 7 Hari Terakhir & Batas Budget Harian -->
+    <section class="weekly-chart-section" aria-label="Pengeluaran 7 Hari Terakhir">
+      <div class="section-title-bar">
+        <h3 class="section-heading">7 hari terakhir</h3>
+        <span class="section-meta num">Rata-rata {rupiah(last7DaysData.average)}</span>
+      </div>
+      <ExpenseLineChart
+        data={last7DaysData.days}
+        dailyBudget={dailyBudgetLimit}
+        average={last7DaysData.average}
+      />
+    </section>
+
+    <!-- 7. Kantong Anggaran (DESIGN.md Section 4.6 BudgetRow) -->
     <section class="budgets-section" aria-label="Kantong Anggaran">
       <div class="section-title-bar">
         <h3 class="section-heading">Kantong anggaran</h3>
@@ -1096,7 +1129,19 @@
     font-weight: 600;
   }
 
-  /* 4. Kantong Anggaran */
+  /* 4. Chart 7 Hari */
+  .weekly-chart-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .section-meta {
+    font-size: var(--fs-sm, 14px);
+    color: var(--fg-muted);
+  }
+
+  /* 5. Kantong Anggaran */
   .budgets-section {
     display: flex;
     flex-direction: column;

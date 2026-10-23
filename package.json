@@ -7,7 +7,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"test": "node test/tahap2.test.js && node test/tahap3.test.js && node test/tahap4.test.js && node test/category_selection.test.js && node test/motion.test.js && node test/swipe_carousel.test.js"
+		"test": "node test/tahap2.test.js && node test/tahap3.test.js && node test/tahap4.test.js && node test/category_selection.test.js && node test/motion.test.js && node test/swipe_carousel.test.js && node test/expense_line_chart.test.js"
 	},
 	"devDependencies": {
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
