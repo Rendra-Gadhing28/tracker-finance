@@ -430,6 +430,60 @@
     }
   }
 
+  const TAB_WIDTHS = {
+    beranda: 116,
+    statistik: 110,
+    tabungan: 120,
+    pengaturan: 136
+  };
+
+  const activeDockIndex = $derived.by(() => {
+    if (isMainTabRoute) return activeTabIndex;
+    const found = navItems.findIndex((item) => isActive(item.href));
+    return found !== -1 ? found : 0;
+  });
+
+  const activeDockItem = $derived(navItems[activeDockIndex] || navItems[0]);
+  const runnerWidth = $derived(TAB_WIDTHS[activeDockItem.id] || 116);
+  const runnerX = $derived(activeDockIndex * 50);
+
+  let liquidEl = $state(null);
+  let liquidAnimation = null;
+  let prevDockIndex = $state(null);
+
+  function triggerLiquidSqueeze(fromIndex, toIndex) {
+    if (!liquidEl || fromIndex === toIndex) return;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    const dist = Math.abs(toIndex - fromIndex);
+    const peakScaleX = Number((1 + dist * 0.18).toFixed(2));
+    const peakScaleY = Number(Math.max(0.65, 0.8 - dist * 0.05).toFixed(2));
+
+    liquidAnimation?.cancel();
+    liquidAnimation = liquidEl.animate(
+      [
+        { transform: 'scale(1, 1)', offset: 0 },
+        { transform: `scale(${peakScaleX}, ${peakScaleY})`, offset: 0.35 },
+        { transform: 'scale(0.98, 1.05)', offset: 0.72 },
+        { transform: 'scale(1, 1)', offset: 1 }
+      ],
+      {
+        duration: 420,
+        easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)',
+        fill: 'none'
+      }
+    );
+  }
+
+  $effect(() => {
+    const current = activeDockIndex;
+    if (prevDockIndex !== null && prevDockIndex !== current) {
+      triggerLiquidSqueeze(prevDockIndex, current);
+    }
+    prevDockIndex = current;
+  });
+
   const syncStatus = $derived.by(() => {
     if ($sync.status === 'offline') return 'offline';
     if ($sync.pendingCount > 0) return 'saving';
@@ -504,10 +558,19 @@
     <!-- Bottom Nav 4 item -->
     <nav class="bottom-dock" aria-label="Navigasi Utama">
       <div class="dock-inner">
+        <!-- Single Liquid Bubble Runner -->
+        <div
+          class="dock-bubble-runner"
+          style="transform: translate3d({runnerX}px, 0, 0); width: {runnerWidth}px;"
+        >
+          <div class="dock-bubble-liquid" bind:this={liquidEl}></div>
+        </div>
+
         {#each navItems as item}
           <a
             href={item.href}
             class="dock-tab interactive-tap {isDockActive(item) ? 'active' : ''}"
+            data-tab-id={item.id}
             aria-current={isDockActive(item) ? 'page' : undefined}
             onclick={(e) => handleDockTabClick(e, item)}
           >
@@ -713,7 +776,7 @@
   /* Floating Action Button (FAB) Tambah (+) di atas nav */
   .fab-tambah {
     position: fixed;
-    bottom: calc(72px + env(safe-area-inset-bottom, 12px));
+    bottom: calc(88px + env(safe-area-inset-bottom, 12px));
     right: max(24px, calc(50% - 360px + 24px));
     height: 52px;
     padding: 0 18px;
@@ -724,86 +787,233 @@
     color: var(--on-accent);
     border-radius: var(--r, 10px);
     border: none;
-    box-shadow: none;
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.12);
     font-family: var(--font-ui);
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     z-index: 70;
-    transition: opacity 120ms var(--ease);
+    transition: opacity 120ms var(--ease), transform 120ms var(--ease);
   }
 
   .fab-tambah:active {
     opacity: 0.85;
+    transform: scale(0.96);
   }
 
   .fab-label {
     line-height: 1;
   }
 
-  /* Bottom Dock Navigation - 4 items, minimal, 1px border */
+  /* Floating Dock Kapsul (iPhone style rounded 50%) */
   .bottom-dock {
     position: fixed;
-    bottom: 0;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
-    width: 100%;
-    max-width: 720px;
-    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    width: fit-content;
+    max-width: min(calc(100vw - 32px), 420px);
     background: var(--bg-raised);
-    border-top: 1px solid var(--line);
+    border: 1px solid var(--line);
+    border-radius: 9999px;
+    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     z-index: 60;
     box-sizing: border-box;
-    padding: 0 16px env(safe-area-inset-bottom, 0px);
+    padding: 6px;
   }
 
   .dock-inner {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-around;
-    height: 56px;
-    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+    width: fit-content;
+    box-sizing: border-box;
   }
 
-  .dock-tab {
-    flex: 1;
+  /* Single Liquid Bubble Runner */
+  .dock-bubble-runner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 44px;
+    border-radius: 9999px;
+    z-index: 0;
+    pointer-events: none;
+    transition: transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
+                width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
+    will-change: transform, width;
+  }
+
+  .dock-bubble-liquid {
+    width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
+    border-radius: 9999px;
+    background: var(--accent);
+    box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.2);
+    transform-origin: center center;
+    will-change: transform;
+  }
+
+  /* Dock Tabs: Inactive (compact round icon-only) vs Active (pill width) */
+  .dock-tab {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
+    gap: 0;
+    height: 44px;
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    border-radius: 9999px;
     text-decoration: none;
     color: var(--fg-muted);
-    gap: 3px;
-    transition: color 120ms var(--ease);
-    border: none;
     background: transparent;
+    border: none;
     cursor: pointer;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
+                color 0.25s ease,
+                padding 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
+                gap 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  @media (hover: hover) {
+    .dock-tab:not(.active):hover {
+      color: var(--fg);
+      background: rgba(0, 0, 0, 0.04);
+    }
   }
 
   .dock-tab:active {
-    opacity: 0.7;
+    transform: scale(0.95);
   }
 
+  /* Tab Aktif (lebar menyesuaikan konten, teks putih) */
   .dock-tab.active {
-    color: var(--accent);
+    gap: 8px;
+    padding: 0 16px 0 14px;
+    color: var(--on-accent);
   }
 
+  .dock-tab[data-tab-id='beranda'].active {
+    width: 116px;
+  }
+  .dock-tab[data-tab-id='statistik'].active {
+    width: 110px;
+  }
+  .dock-tab[data-tab-id='tabungan'].active {
+    width: 120px;
+  }
+  .dock-tab[data-tab-id='pengaturan'].active {
+    width: 136px;
+  }
+
+  /* Icon & Wave Ring Animation */
   .dock-tab-icon {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 22px;
+    height: 22px;
     line-height: 1;
+    flex-shrink: 0;
+    z-index: 1;
   }
 
+  .dock-tab-icon svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .dock-tab.active .dock-tab-icon::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: radial-gradient(circle, currentColor 0%, transparent 70%);
+    opacity: 0.2;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .dock-tab.active .dock-tab-icon::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    animation: dock-icon-wave 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  }
+
+  @keyframes dock-icon-wave {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.7;
+      box-shadow: 0 0 0 0 currentColor;
+    }
+    50% {
+      transform: scale(1.35);
+      opacity: 0;
+      box-shadow: 0 0 4px 1px currentColor;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+
+  /* Label Text: Collapsed when inactive, expands when active */
   .dock-tab-label {
     font-size: var(--fs-cap, 13px);
     font-family: var(--font-ui);
     line-height: 1;
-    font-weight: 500;
+    font-weight: 600;
+    max-width: 0;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: none;
+    margin: 0;
+    transform: translateX(-4px);
+    transition: max-width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
+                opacity 0.25s ease,
+                transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
 
   .dock-tab.active .dock-tab-label {
-    font-weight: 600;
+    max-width: 120px;
+    width: auto;
+    opacity: 1;
+    margin-left: 0;
+    transform: translateX(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dock-bubble-runner,
+    .dock-tab,
+    .dock-tab-label {
+      transition: none;
+    }
+    .dock-tab.active .dock-tab-icon::after {
+      animation: none;
+    }
   }
 </style>
