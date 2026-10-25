@@ -5,6 +5,7 @@
   import { formatRp } from '$lib/money.js';
   import { getWIBParts } from '$lib/week.js';
   import { calculateStats, INDO_DAYS, INDO_MONTHS } from '$lib/stats.js';
+  import { floatView } from '$lib/actions/floatView.js';
   import {
     transactions,
     budgets,
@@ -146,7 +147,7 @@
 
 <div class="stats-page">
   <!-- 1. Period & Mode Controls -->
-  <div class="controls-card glass-panel">
+  <div class="controls-card glass-panel float-item" use:floatView>
     <!-- Period Segmented [ Minggu ] [ Bulan ] -->
     <div class="segmented-control" role="tablist">
       <button
@@ -209,19 +210,21 @@
   </div>
 
   <!-- 2. Donut Chart Section (PRD 19.4) -->
-  <Card variant="neutral" class="donut-card">
-    <DonutChart
-      slices={stats.slices}
-      totalAmount={stats.totalAmount}
-      {mode}
-      periodKey={`${period}_${weekOffset}_${monthOffset}`}
-      bind:selectedSliceId
-    />
-  </Card>
+  <div class="float-item" use:floatView>
+    <Card variant="neutral" class="donut-card">
+      <DonutChart
+        slices={stats.slices}
+        totalAmount={stats.totalAmount}
+        {mode}
+        periodKey={`${period}_${weekOffset}_${monthOffset}`}
+        bind:selectedSliceId
+      />
+    </Card>
+  </div>
 
   <!-- 3. Insights (PRD 19.7) -->
   {#if stats.insights.length > 0}
-    <div class="insights-box">
+    <div class="insights-box float-item" use:floatView>
       {#each stats.insights as insight}
         <div class="insight-row">
           <span class="insight-sparkle">✦</span>
@@ -232,14 +235,14 @@
   {/if}
 
   <!-- 4. Category Breakdown List (PRD 19.5) -->
-  <section class="breakdown-section" aria-label="Rincian Kategori">
+  <section class="breakdown-section float-item" use:floatView aria-label="Rincian Kategori">
     <h3 class="section-title">Rincian Kategori</h3>
     <div class="category-breakdown-list">
       {#each stats.categoryList as cat, i}
         {@const isZero = cat.nominal === 0}
         {@const isSelected = selectedSliceId === cat.id}
 
-        <div class="cat-breakdown-wrapper animate-stagger" style="--i: {i}">
+        <div class="cat-breakdown-wrapper animate-stagger float-item" style="--i: {i}" use:floatView>
           <Card
             variant={cat.warna || 'jajan'}
             interactive
@@ -311,7 +314,7 @@
   </section>
 
   <!-- 5. Daily Spending Bars (PRD 19.6) -->
-  <section class="daily-bars-section" aria-label="Pengeluaran per Hari">
+  <section class="daily-bars-section float-item" use:floatView aria-label="Pengeluaran per Hari">
     <div class="daily-bars-header">
       <h3 class="section-title">
         {period === 'minggu' ? 'Pengeluaran per hari' : 'Pengeluaran per minggu'}

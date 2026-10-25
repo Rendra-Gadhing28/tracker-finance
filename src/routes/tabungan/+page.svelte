@@ -13,6 +13,7 @@
     calculateGeneralSavings,
     calculateTotalSavings
   } from '$lib/goals.js';
+  import { floatView } from '$lib/actions/floatView.js';
   import {
     goals,
     transactions,
@@ -91,7 +92,7 @@
 
 <div class="tabungan-page">
   <!-- Page Header -->
-  <header class="page-header">
+  <header class="page-header float-item" use:floatView>
     <div class="header-titles">
       <h1 class="page-title">Tabungan</h1>
       <span class="page-subtitle">Kumpulkan impianmu sedikit demi sedikit</span>
@@ -108,7 +109,7 @@
   </header>
 
   <!-- 1. Vault Hero Card (.glass-core) -->
-  <section class="vault-hero glass-core" aria-label="Ringkasan Tabungan">
+  <section class="vault-hero glass-core float-item" use:floatView aria-label="Ringkasan Tabungan">
     <div class="vault-header">
       <div class="vault-label-group">
         <span class="vault-label">Total ditabung</span>
@@ -145,7 +146,7 @@
 
   <!-- Tabungan Umum (.glass-panel) -->
   {#if generalSavings > 0}
-    <div class="tabungan-umum-card glass-panel interactive-tap">
+    <div class="tabungan-umum-card glass-panel interactive-tap float-item" use:floatView>
       <div class="umum-left">
         <div class="umum-icon-orb">
           <span>🐷</span>
@@ -171,7 +172,7 @@
 
   <!-- Empty State -->
   {#if ($goals || []).length === 0}
-    <div class="empty-state-card glass-panel">
+    <div class="empty-state-card glass-panel float-item" use:floatView>
       <div class="empty-mascot-hug" aria-hidden="true">
         <span class="cat-hug">🐱</span>
         <span class="piggy-hug">🐷</span>
@@ -186,7 +187,7 @@
     </div>
   {:else}
     <!-- 2. Target Saya Section Header -->
-    <div class="section-header">
+    <div class="section-header float-item" use:floatView>
       <h3 class="section-title">Target Saya</h3>
       {#if isMaxGoalsReached}
         <span class="max-note">Maksimal 10 target</span>
@@ -198,8 +199,9 @@
       <div class="goals-list">
         {#each activeGoals as goal, i (goal.id)}
           <div
-            class="goal-card glass-panel interactive-tap animate-stagger"
+            class="goal-card glass-panel interactive-tap animate-stagger float-item"
             style="--i: {i}"
+            use:floatView
           >
             <!-- Header baris atas: Ikon + Nama di kiri (klik menuju detail), persentase di kanan -->
             <div
@@ -297,7 +299,8 @@
           <div class="reached-list">
             {#each reachedGoals as goal (goal.id)}
               <div
-                class="goal-card glass-panel reached-card"
+                class="goal-card glass-panel reached-card float-item"
+                use:floatView
                 role="button"
                 tabindex="0"
                 onclick={() => goto(`/tabungan/${goal.id}`)}

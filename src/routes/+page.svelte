@@ -20,6 +20,7 @@
     getWIBParts
   } from '$lib/week.js';
   import { calculateLast7DaysSpending } from '$lib/stats.js';
+  import { floatView } from '$lib/actions/floatView.js';
   import {
     budgets,
     transactions,
@@ -502,7 +503,7 @@
     </div>
   {:else}
     <!-- 1. Header Atas Beranda -->
-    <header class="beranda-header">
+    <header class="beranda-header float-item" use:floatView>
       <div class="header-top-row">
         <div class="greeting-group">
           <span class="greeting-title">{greeting}</span>
@@ -544,7 +545,7 @@
 
     <!-- 2. Income Reminder Banner if not recorded this week -->
     {#if isCurrentWeek && !hasIncomeThisWeek}
-      <div class="income-banner">
+      <div class="income-banner float-item" use:floatView>
         <span class="income-banner-text">Uang jajan minggu ini belum dicatat</span>
         <button
           type="button"
@@ -557,7 +558,7 @@
     {/if}
 
     <!-- 3. Hero Saldo / Sisa Utama (DESIGN.md Section 1, 2.2, 5) -->
-    <section class="hero-section" aria-label="Sisa Uang">
+    <section class="hero-section float-item" use:floatView aria-label="Sisa Uang">
       <div class="hero-top-info">
         <span class="hero-label">
           {isCurrentWeek ? 'Sisa uang minggu ini' : 'Sisa uang minggu lalu'}
@@ -595,32 +596,34 @@
     </section>
 
     <!-- 4. StatStrip Ringkas 3 Kolom (DESIGN.md Section 4.3) -->
-    <StatStrip
-      items={[
-        {
-          label: 'Masuk',
-          value: isBalanceHidden ? '••••' : (totalsByTipe.masuk >= 1000000 ? compact(totalsByTipe.masuk) : rupiah(totalsByTipe.masuk)),
-          color: 'var(--accent)',
-          onclick: () => txManager?.openCreate?.({ tipe: 'masuk' })
-        },
-        {
-          label: 'Keluar',
-          value: isBalanceHidden ? '••••' : (totalsByTipe.keluar >= 1000000 ? compact(totalsByTipe.keluar) : rupiah(totalsByTipe.keluar)),
-          color: 'var(--expense)',
-          onclick: () => txManager?.openCreate?.({ tipe: 'keluar' })
-        },
-        {
-          label: 'Tabung',
-          value: isBalanceHidden ? '••••' : (totalsByTipe.tabung >= 1000000 ? compact(totalsByTipe.tabung) : rupiah(totalsByTipe.tabung)),
-          color: 'var(--warn)',
-          onclick: () => txManager?.openCreate?.({ tipe: 'tabung' })
-        }
-      ]}
-    />
+    <div class="float-item" use:floatView>
+      <StatStrip
+        items={[
+          {
+            label: 'Masuk',
+            value: isBalanceHidden ? '••••' : (totalsByTipe.masuk >= 1000000 ? compact(totalsByTipe.masuk) : rupiah(totalsByTipe.masuk)),
+            color: 'var(--accent)',
+            onclick: () => txManager?.openCreate?.({ tipe: 'masuk' })
+          },
+          {
+            label: 'Keluar',
+            value: isBalanceHidden ? '••••' : (totalsByTipe.keluar >= 1000000 ? compact(totalsByTipe.keluar) : rupiah(totalsByTipe.keluar)),
+            color: 'var(--expense)',
+            onclick: () => txManager?.openCreate?.({ tipe: 'keluar' })
+          },
+          {
+            label: 'Tabung',
+            value: isBalanceHidden ? '••••' : (totalsByTipe.tabung >= 1000000 ? compact(totalsByTipe.tabung) : rupiah(totalsByTipe.tabung)),
+            color: 'var(--warn)',
+            onclick: () => txManager?.openCreate?.({ tipe: 'tabung' })
+          }
+        ]}
+      />
+    </div>
 
     <!-- 5. Batas Harian (Daily Allowance Meter, Current week only) -->
     {#if isCurrentWeek}
-      <section class="daily-allowance-section" aria-label="Batas Harian">
+      <section class="daily-allowance-section float-item" use:floatView aria-label="Batas Harian">
         <div class="daily-meta-row">
           <span class="daily-label">Batas Hari Ini</span>
           <span class="daily-details num">
@@ -639,7 +642,7 @@
     {/if}
 
     <!-- 6. Grafik Garis 7 Hari Terakhir & Batas Budget Harian -->
-    <section class="weekly-chart-section" aria-label="Pengeluaran 7 Hari Terakhir">
+    <section class="weekly-chart-section float-item" use:floatView aria-label="Pengeluaran 7 Hari Terakhir">
       <div class="section-title-bar">
         <h3 class="section-heading">7 hari terakhir</h3>
         <span class="section-meta num">Rata-rata {rupiah(last7DaysData.average)}</span>
@@ -652,7 +655,7 @@
     </section>
 
     <!-- 7. Kantong Anggaran (DESIGN.md Section 4.6 BudgetRow) -->
-    <section class="budgets-section" aria-label="Kantong Anggaran">
+    <section class="budgets-section float-item" use:floatView aria-label="Kantong Anggaran">
       <div class="section-title-bar">
         <h3 class="section-heading">Kantong anggaran</h3>
         <button
@@ -707,7 +710,7 @@
     </section>
 
     <!-- 7. Daftar Transaksi (DESIGN.md Section 4.1 & 4.2) -->
-    <section class="transactions-section" aria-label="Daftar Transaksi">
+    <section class="transactions-section float-item" use:floatView aria-label="Daftar Transaksi">
       <div class="section-title-bar">
         <h3 class="section-heading">Transaksi</h3>
         <!-- Filter Tabs -->

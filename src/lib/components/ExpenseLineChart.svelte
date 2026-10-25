@@ -51,6 +51,14 @@
       .join(' ');
   });
 
+  const areaD = $derived.by(() => {
+    if (points.length === 0) return '';
+    const first = points[0];
+    const last = points[points.length - 1];
+    const curvePoints = points.map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    return `M ${first.x.toFixed(1)} ${baseline} ${curvePoints} L ${last.x.toFixed(1)} ${baseline} Z`;
+  });
+
   const budgetY = $derived.by(() => {
     if (!dailyBudget || dailyBudget <= 0) return null;
     const rawY = baseline - (dailyBudget / maxY) * plotHeight;
@@ -74,6 +82,13 @@
     role="img"
     aria-label="Grafik pengeluaran 7 hari terakhir. Rata-rata {compact(average)}, batas harian {compact(dailyBudget)}"
   >
+    <defs>
+      <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.18" />
+        <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.0" />
+      </linearGradient>
+    </defs>
+
     <!-- Baseline 0 -->
     <line
       x1="16"
@@ -107,6 +122,15 @@
       </text>
     {/if}
 
+    <!-- Area Gradient Fill di Bawah Kurva -->
+    {#if areaD}
+      <path
+        d={areaD}
+        fill="url(#chartGradient)"
+        class="area-fill"
+      />
+    {/if}
+
     <!-- Garis Tren Pengeluaran -->
     {#if pathD}
       <path
@@ -117,66 +141,69 @@
         stroke-linecap="round"
         stroke-linejoin="round"
         class="trend-line"
+        pathLength="1000"
       />
     {/if}
 
     <!-- Titik Data & Label -->
-    {#each points as p}
-      <!-- Label Nilai di Atas Titik -->
-      {#if p.nominal > 0 || p.isToday}
+    {#each points as p, i}
+      <g class="point-group" style="--i: {i}; --point-delay: calc(400ms + {i} * 140ms);">
+        <!-- Label Nilai di Atas Titik -->
+        {#if p.nominal > 0 || p.isToday}
+          <text
+            x={p.x}
+            y={Math.max(12, p.y - 8)}
+            text-anchor="middle"
+            class="point-label num"
+            class:label-over={p.isOver}
+            class:label-today={p.isToday}
+          >
+            {compact(p.nominal)}
+          </text>
+        {/if}
+
+        <!-- Titik Lingkaran -->
+        <circle
+          cx={p.x}
+          cy={p.y}
+          r={p.isToday ? 5.5 : 4.5}
+          class="point-dot"
+          class:dot-today={p.isToday}
+          class:dot-over={p.isOver}
+          stroke={p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)'}
+          fill={p.isToday ? (p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)') : 'var(--bg-raised, #FFF)'}
+          stroke-width="2"
+        />
+
+        <!-- Area Sentuh / Tap Target -->
+        <circle
+          cx={p.x}
+          cy={p.y}
+          r="18"
+          fill="transparent"
+          class="point-touch-target"
+          role="button"
+          tabindex="0"
+          aria-label="{p.label}: {rupiah(p.nominal)}"
+          onclick={() => (activeIndex = activeIndex === p.index ? null : p.index)}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              activeIndex = activeIndex === p.index ? null : p.index;
+            }
+          }}
+        />
+
+        <!-- Sumbu X: Nama Hari -->
         <text
           x={p.x}
-          y={Math.max(12, p.y - 8)}
+          y={baseline + 18}
           text-anchor="middle"
-          class="point-label num"
-          class:label-over={p.isOver}
-          class:label-today={p.isToday}
+          class="day-label"
+          class:day-today={p.isToday}
         >
-          {compact(p.nominal)}
+          {p.shortLabel}
         </text>
-      {/if}
-
-      <!-- Titik Lingkaran -->
-      <circle
-        cx={p.x}
-        cy={p.y}
-        r={p.isToday ? 5.5 : 4.5}
-        class="point-dot"
-        class:dot-today={p.isToday}
-        class:dot-over={p.isOver}
-        stroke={p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)'}
-        fill={p.isToday ? (p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)') : 'var(--bg-raised, #FFF)'}
-        stroke-width="2"
-      />
-
-      <!-- Area Sentuh / Tap Target -->
-      <circle
-        cx={p.x}
-        cy={p.y}
-        r="18"
-        fill="transparent"
-        class="point-touch-target"
-        role="button"
-        tabindex="0"
-        aria-label="{p.label}: {rupiah(p.nominal)}"
-        onclick={() => (activeIndex = activeIndex === p.index ? null : p.index)}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            activeIndex = activeIndex === p.index ? null : p.index;
-          }
-        }}
-      />
-
-      <!-- Sumbu X: Nama Hari -->
-      <text
-        x={p.x}
-        y={baseline + 18}
-        text-anchor="middle"
-        class="day-label"
-        class:day-today={p.isToday}
-      >
-        {p.shortLabel}
-      </text>
+      </g>
     {/each}
   </svg>
 
@@ -220,11 +247,59 @@
   }
 
   .trend-line {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: progressiveDraw 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     transition: d 300ms var(--ease, ease);
   }
 
+  @keyframes progressiveDraw {
+    from {
+      stroke-dashoffset: 1000;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .area-fill {
+    opacity: 0;
+    animation: fadeInArea 1.4s cubic-bezier(0.16, 1, 0.3, 1) 150ms forwards;
+    transition: d 300ms var(--ease, ease);
+  }
+
+  @keyframes fadeInArea {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   .point-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0;
+    transform: scale(0);
+    animation: popPointDot 450ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation-delay: var(--point-delay, calc(400ms + var(--i, 0) * 140ms));
     transition: cx 300ms var(--ease, ease), cy 300ms var(--ease, ease), r 150ms var(--ease, ease);
+  }
+
+  @keyframes popPointDot {
+    0% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .point-dot.dot-today {
@@ -243,6 +318,20 @@
     font-size: 11px;
     font-weight: 500;
     fill: var(--fg);
+    opacity: 0;
+    animation: fadeInPointLabel 400ms ease-out forwards;
+    animation-delay: var(--point-delay, calc(400ms + var(--i, 0) * 140ms));
+  }
+
+  @keyframes fadeInPointLabel {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .point-label.label-over {
@@ -288,5 +377,21 @@
 
   .tooltip-val {
     font-weight: 600;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .trend-line {
+      stroke-dasharray: none !important;
+      stroke-dashoffset: 0 !important;
+      animation: none !important;
+    }
+
+    .area-fill,
+    .point-dot,
+    .point-label {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
   }
 </style>

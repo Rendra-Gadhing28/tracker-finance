@@ -15,6 +15,7 @@
   } from '$lib/stores';
   import { formatRp, parseRp } from '$lib/money';
   import { setTheme, getTheme } from '$lib/theme.js';
+  import { floatView } from '$lib/actions/floatView.js';
 
   let currentTheme = $state('system');
   $effect(() => {
@@ -180,65 +181,67 @@
 
 <div class="pengaturan-page">
   <!-- Page Header -->
-  <header class="page-header">
+  <header class="page-header float-item" use:floatView>
     <h1 class="page-title">Pengaturan</h1>
   </header>
 
   {#if $skippedRowsCount > 0}
-    <div class="skipped-rows-pill" role="alert">
+    <div class="skipped-rows-pill float-item" use:floatView role="alert">
       <span>⚠️ {$skippedRowsCount} baris diabaikan</span>
     </div>
   {/if}
 
   <!-- Card Uang Jajan Mingguan & Allocation Bar (Section 13.2) -->
-  <Card variant="neutral">
-    <div class="uang-jajan-block">
-      <div class="uj-top-row">
-        <div>
-          <span class="uj-label">Uang jajan mingguan</span>
-          <div class="uj-amount font-num tabular-nums">{formatRp(uangJajan)}</div>
+  <div class="float-item" use:floatView>
+    <Card variant="neutral">
+      <div class="uang-jajan-block">
+        <div class="uj-top-row">
+          <div>
+            <span class="uj-label">Uang jajan mingguan</span>
+            <div class="uj-amount font-num tabular-nums">{formatRp(uangJajan)}</div>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onclick={openUangJajanEditor}
+            aria-label="Ubah uang jajan mingguan"
+          >
+            Ubah
+          </Button>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onclick={openUangJajanEditor}
-          aria-label="Ubah uang jajan mingguan"
-        >
-          Ubah
-        </Button>
-      </div>
 
-      <!-- Allocation Progress Bar -->
-      <div class="alloc-bar-track">
-        <div
-          class="alloc-bar-fill status-{allocStatus}"
-          style="width: {allocPercent}%;"
-        ></div>
-      </div>
+        <!-- Allocation Progress Bar -->
+        <div class="alloc-bar-track">
+          <div
+            class="alloc-bar-fill status-{allocStatus}"
+            style="width: {allocPercent}%;"
+          ></div>
+        </div>
 
-      <!-- Allocation Status Text / Pill -->
-      <div class="alloc-status-row">
-        {#if allocStatus === 'equal'}
-          <span class="alloc-text status-equal">
-            Teralokasi {formatRp(totalAllocated)} · pas ✓
-          </span>
-        {:else if allocStatus === 'less'}
-          <span class="alloc-text status-less">
-            Belum dialokasikan {formatRp(allocDiff)}
-          </span>
-        {:else}
-          <span class="alloc-text status-more">
-            Lebih {formatRp(Math.abs(allocDiff))} dari uang jajan
-          </span>
-        {/if}
+        <!-- Allocation Status Text / Pill -->
+        <div class="alloc-status-row">
+          {#if allocStatus === 'equal'}
+            <span class="alloc-text status-equal">
+              Teralokasi {formatRp(totalAllocated)} · pas ✓
+            </span>
+          {:else if allocStatus === 'less'}
+            <span class="alloc-text status-less">
+              Belum dialokasikan {formatRp(allocDiff)}
+            </span>
+          {:else}
+            <span class="alloc-text status-more">
+              Lebih {formatRp(Math.abs(allocDiff))} dari uang jajan
+            </span>
+          {/if}
+        </div>
       </div>
-    </div>
-  </Card>
+    </Card>
+  </div>
 
   <!-- Categories Section Grouped by Type (Section 13.3) -->
   <div class="categories-section">
     <!-- Pengeluaran -->
-    <div class="cat-group">
+    <div class="cat-group float-item" use:floatView>
       <h3 class="cat-group-title">Pengeluaran</h3>
       <div class="cat-list">
         {#each keluarCategories as cat (cat.id)}
@@ -262,7 +265,7 @@
     </div>
 
     <!-- Tabungan -->
-    <div class="cat-group">
+    <div class="cat-group float-item" use:floatView>
       <h3 class="cat-group-title">Tabungan</h3>
       <div class="cat-list">
         {#each tabungCategories as cat (cat.id)}
@@ -286,7 +289,7 @@
     </div>
 
     <!-- Pemasukan -->
-    <div class="cat-group">
+    <div class="cat-group float-item" use:floatView>
       <h3 class="cat-group-title">Pemasukan</h3>
       <div class="cat-list">
         {#each masukCategories as cat (cat.id)}
@@ -310,7 +313,7 @@
     </div>
 
     <!-- Tambah Kategori Baru Button -->
-    <div class="new-cat-btn-wrap">
+    <div class="new-cat-btn-wrap float-item" use:floatView>
       <Button
         variant="secondary"
         full
@@ -322,7 +325,7 @@
   </div>
 
   <!-- General Settings Section (Umum) -->
-  <div class="general-section">
+  <div class="general-section float-item" use:floatView>
     <h3 class="section-title">Umum</h3>
     <Card>
       <div class="settings-rows">

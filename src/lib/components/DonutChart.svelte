@@ -230,38 +230,40 @@
         class="empty-donut-ring"
       />
     {:else}
-      <g class="donut-slices-group" mask="url(#donutSweepMask)">
-        {#each slices as slice (slice.id)}
-          {@const isSelected = selectedSliceId === slice.id}
-          {@const hasSelection = selectedSliceId !== null}
-          {@const isDimmed = hasSelection && !isSelected}
+      {#key periodKey}
+        <g class="donut-slices-group donut-slices-reveal" mask="url(#donutSweepMask)">
+          {#each slices as slice (slice.id)}
+            {@const isSelected = selectedSliceId === slice.id}
+            {@const hasSelection = selectedSliceId !== null}
+            {@const isDimmed = hasSelection && !isSelected}
 
-          {@const rIn = isSelected ? baseR - baseThickness / 2 - 3 : baseR - baseThickness / 2}
-          {@const rOut = isSelected ? baseR + baseThickness / 2 + 3 : baseR + baseThickness / 2}
-          {@const pathD = makeArcPath(rIn, rOut, slice.startAngle, slice.endAngle)}
+            {@const rIn = isSelected ? baseR - baseThickness / 2 - 3 : baseR - baseThickness / 2}
+            {@const rOut = isSelected ? baseR + baseThickness / 2 + 3 : baseR + baseThickness / 2}
+            {@const pathD = makeArcPath(rIn, rOut, slice.startAngle, slice.endAngle)}
 
-          {@const midAngle = (slice.startAngle + slice.endAngle) / 2}
-          {@const rad = ((midAngle - 90) * Math.PI) / 180}
-          {@const shiftX = isSelected ? Math.cos(rad) * 4 : 0}
-          {@const shiftY = isSelected ? Math.sin(rad) * 4 : 0}
+            {@const midAngle = (slice.startAngle + slice.endAngle) / 2}
+            {@const rad = ((midAngle - 90) * Math.PI) / 180}
+            {@const shiftX = isSelected ? Math.cos(rad) * 4 : 0}
+            {@const shiftY = isSelected ? Math.sin(rad) * 4 : 0}
 
-          <path
-            d={pathD}
-            fill={slice.color?.border || slice.borderHex || slice.warnaHex || '#5ED6E6'}
-            stroke="rgba(7, 12, 20, 0.95)"
-            stroke-width="1.5"
-            stroke-linejoin="round"
-            role="button"
-            tabindex="0"
-            aria-label="{slice.label}: {slice.nominal} rupiah ({slice.percent}%)"
-            class="donut-slice {isSelected ? 'blossomed' : ''} {isDimmed ? 'dimmed' : ''}"
-            style="transform: translate({shiftX}px, {shiftY}px);"
-            filter={isSelected ? 'url(#blossomShadow)' : undefined}
-            onclick={() => handleSliceClick(slice)}
-            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSliceClick(slice)}
-          />
-        {/each}
-      </g>
+            <path
+              d={pathD}
+              fill={slice.color?.border || slice.borderHex || slice.warnaHex || '#5ED6E6'}
+              stroke="rgba(7, 12, 20, 0.95)"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+              role="button"
+              tabindex="0"
+              aria-label="{slice.label}: {slice.nominal} rupiah ({slice.percent}%)"
+              class="donut-slice {isSelected ? 'blossomed' : ''} {isDimmed ? 'dimmed' : ''}"
+              style="transform: translate({shiftX}px, {shiftY}px);"
+              filter={isSelected ? 'url(#blossomShadow)' : undefined}
+              onclick={() => handleSliceClick(slice)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSliceClick(slice)}
+            />
+          {/each}
+        </g>
+      {/key}
     {/if}
 
     <!-- CENTER HOLE (Interactive touch reset target) -->
@@ -279,53 +281,55 @@
     />
 
     <!-- CENTER TEXT CONTENT (PRD 19.4) -->
-    <g class="donut-center-text" pointer-events="none">
-      {#if slices.length === 0 || totalAmount <= 0}
-        <text
-          x={cx}
-          y={cy - 10}
-          text-anchor="middle"
-          class="center-empty-text-1"
-        >
-          Belum ada
-        </text>
-        <text
-          x={cx}
-          y={cy + 10}
-          text-anchor="middle"
-          class="center-empty-text-2"
-        >
-          pengeluaran
-        </text>
-        <text
-          x={cx}
-          y={cy + 28}
-          text-anchor="middle"
-          class="center-empty-text-3"
-        >
-          di periode ini
-        </text>
-      {:else if selectedSlice}
-        <!-- Selected Slice View -->
-        <text x={cx} y={cy - 16} text-anchor="middle" class="center-slice-icon">
-          {selectedSlice.ikon}
-        </text>
-        <text x={cx} y={cy + 3} text-anchor="middle" class="center-slice-name">
-          {selectedSlice.nama}
-        </text>
-        <text x={cx} y={cy + 20} text-anchor="middle" class="center-slice-nominal tabular-nums">
-          {formatRp(selectedSlice.nominal)} · {selectedSlice.persen}%
-        </text>
-      {:else}
-        <!-- Default State: Total + Mode Label -->
-        <text x={cx} y={cy - 8} text-anchor="middle" class="center-total-amount tabular-nums">
-          {formatRp(totalAmount)}
-        </text>
-        <text x={cx} y={cy + 14} text-anchor="middle" class="center-mode-label">
-          {mode === 'rencana' ? 'Rencana' : 'Terpakai'}
-        </text>
-      {/if}
-    </g>
+    {#key periodKey}
+      <g class="donut-center-text center-text-reveal" pointer-events="none">
+        {#if slices.length === 0 || totalAmount <= 0}
+          <text
+            x={cx}
+            y={cy - 10}
+            text-anchor="middle"
+            class="center-empty-text-1"
+          >
+            Belum ada
+          </text>
+          <text
+            x={cx}
+            y={cy + 10}
+            text-anchor="middle"
+            class="center-empty-text-2"
+          >
+            pengeluaran
+          </text>
+          <text
+            x={cx}
+            y={cy + 28}
+            text-anchor="middle"
+            class="center-empty-text-3"
+          >
+            di periode ini
+          </text>
+        {:else if selectedSlice}
+          <!-- Selected Slice View -->
+          <text x={cx} y={cy - 16} text-anchor="middle" class="center-slice-icon">
+            {selectedSlice.ikon}
+          </text>
+          <text x={cx} y={cy + 3} text-anchor="middle" class="center-slice-name">
+            {selectedSlice.nama}
+          </text>
+          <text x={cx} y={cy + 20} text-anchor="middle" class="center-slice-nominal tabular-nums">
+            {formatRp(selectedSlice.nominal)} · {selectedSlice.persen}%
+          </text>
+        {:else}
+          <!-- Default State: Total + Mode Label -->
+          <text x={cx} y={cy - 8} text-anchor="middle" class="center-total-amount tabular-nums">
+            {formatRp(totalAmount)}
+          </text>
+          <text x={cx} y={cy + 14} text-anchor="middle" class="center-mode-label">
+            {mode === 'rencana' ? 'Rencana' : 'Terpakai'}
+          </text>
+        {/if}
+      </g>
+    {/key}
   </svg>
 </div>
 
@@ -502,7 +506,7 @@
   }
 
   .sweep-mask-circle {
-    animation: sweepMaskAnim 700ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation: sweepMaskAnim 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   @keyframes sweepMaskAnim {
@@ -514,11 +518,52 @@
     }
   }
 
+  .donut-slices-reveal {
+    transform-origin: 120px 138px;
+    animation: donutSlicesEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes donutSlicesEntrance {
+    0% {
+      transform: scale(0.94) rotate(-6deg);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+
+  .center-text-reveal {
+    transform-origin: 120px 138px;
+    animation: centerTextEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes centerTextEntrance {
+    0% {
+      opacity: 0;
+      transform: scale(0.88);
+    }
+    35% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .donut-slice,
     .cat-pupil,
-    .sweep-mask-circle {
+    .sweep-mask-circle,
+    .donut-slices-reveal,
+    .center-text-reveal {
+      animation: none !important;
       transition: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+      stroke-dashoffset: 0 !important;
     }
   }
 </style>
