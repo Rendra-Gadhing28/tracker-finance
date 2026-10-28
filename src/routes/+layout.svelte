@@ -139,27 +139,29 @@
   }
 
   function handleCarouselScroll() {
-    if (!carouselTrackEl) return;
+    if (!carouselTrackEl || isProgrammaticScroll) return;
     if (scrollRafId) cancelAnimationFrame(scrollRafId);
     scrollRafId = requestAnimationFrame(() => {
-      if (!carouselTrackEl) return;
+      if (!carouselTrackEl || isProgrammaticScroll) return;
       const width = carouselTrackEl.clientWidth || 0;
       if (width > 0) {
         const liveIndex = Math.min(MAIN_TABS.length - 1, Math.max(0, Math.round(carouselTrackEl.scrollLeft / width)));
         if (activeTabIndex !== liveIndex) {
           activeTabIndex = liveIndex;
+          const targetTab = MAIN_TABS[liveIndex];
+          if (targetTab && typeof window !== 'undefined') {
+            const currentWindowPath = normalizePath(window.location.pathname);
+            if (currentWindowPath !== targetTab.path) {
+              history.replaceState(null, '', targetTab.path);
+            }
+          }
         }
       }
     });
-
-    if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      syncUrlAfterScroll();
-    }, 120);
   }
 
   function handleCarouselScrollEnd() {
-    if (scrollTimeout) clearTimeout(scrollTimeout);
+    isProgrammaticScroll = false;
     syncUrlAfterScroll();
   }
 
@@ -262,6 +264,7 @@
       window.removeEventListener('resize', handleWindowResize);
       if (scrollRafId) cancelAnimationFrame(scrollRafId);
       if (scrollTimeout) clearTimeout(scrollTimeout);
+      if (exitTimeout) clearTimeout(exitTimeout);
       if (rafId) cancelAnimationFrame(rafId);
       lenisInstance?.destroy();
     };
@@ -444,12 +447,7 @@
     }
   }
 
-  const TAB_WIDTHS = {
-    beranda: 116,
-    statistik: 110,
-    tabungan: 120,
-    pengaturan: 136
-  };
+  let dockTabEls = $state([]);
 
   const activeDockIndex = $derived.by(() => {
     if (isMainTabRoute) return activeTabIndex;
@@ -457,45 +455,20 @@
     return found !== -1 ? found : 0;
   });
 
-  const activeDockItem = $derived(navItems[activeDockIndex] || navItems[0]);
-  const runnerWidth = $derived(TAB_WIDTHS[activeDockItem.id] || 116);
-  const runnerX = $derived(activeDockIndex * 50);
-
-  let liquidEl = $state(null);
-  let liquidAnimation = null;
-  let prevDockIndex = $state(null);
-
-  function triggerLiquidSqueeze(fromIndex, toIndex) {
-    if (!liquidEl || fromIndex === toIndex) return;
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return;
-    }
-    const dist = Math.abs(toIndex - fromIndex);
-    const peakScaleX = Number((1 + dist * 0.18).toFixed(2));
-    const peakScaleY = Number(Math.max(0.65, 0.8 - dist * 0.05).toFixed(2));
-
-    liquidAnimation?.cancel();
-    liquidAnimation = liquidEl.animate(
-      [
-        { transform: 'scale(1, 1)', offset: 0 },
-        { transform: `scale(${peakScaleX}, ${peakScaleY})`, offset: 0.35 },
-        { transform: 'scale(0.98, 1.05)', offset: 0.72 },
-        { transform: 'scale(1, 1)', offset: 1 }
-      ],
-      {
-        duration: 420,
-        easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)',
-        fill: 'none'
-      }
-    );
-  }
+  let prevActiveDockIndex = $state(null);
+  let exitingDockIndex = $state(null);
+  let exitTimeout = null;
 
   $effect(() => {
     const current = activeDockIndex;
-    if (prevDockIndex !== null && prevDockIndex !== current) {
-      triggerLiquidSqueeze(prevDockIndex, current);
+    if (prevActiveDockIndex !== null && prevActiveDockIndex !== current) {
+      exitingDockIndex = prevActiveDockIndex;
+      if (exitTimeout) clearTimeout(exitTimeout);
+      exitTimeout = setTimeout(() => {
+        exitingDockIndex = null;
+      }, 245);
     }
-    prevDockIndex = current;
+    prevActiveDockIndex = current;
   });
 
   const syncStatus = $derived.by(() => {
@@ -555,39 +528,21 @@
       </main>
     {/if}
 
-    <!-- Floating Action Button (FAB) Tambah (+) di atas nav -->
-    <button
-      type="button"
-      class="fab-tambah"
-      onclick={() => openCreate(null)}
-      aria-label="Tambah Transaksi"
-    >
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-      <span class="fab-label">Tambah</span>
-    </button>
-
-    <!-- Bottom Nav 4 item -->
+    <!-- Bottom Nav Dock with Center Tambah Action Button -->
     <nav class="bottom-dock" aria-label="Navigasi Utama">
       <div class="dock-inner">
-        <!-- Single Liquid Bubble Runner -->
-        <div
-          class="dock-bubble-runner"
-          style="transform: translate3d({runnerX}px, 0, 0); width: {runnerWidth}px;"
-        >
-          <div class="dock-bubble-liquid" bind:this={liquidEl}></div>
-        </div>
-
-        {#each navItems as item}
+        {#each navItems.slice(0, 2) as item, idx}
           <a
+            bind:this={dockTabEls[idx]}
             href={item.href}
-            class="dock-tab interactive-tap {isDockActive(item) ? 'active' : ''}"
+            class="dock-tab {isDockActive(item) ? 'active' : exitingDockIndex === idx ? 'exiting' : ''}"
             data-tab-id={item.id}
             aria-current={isDockActive(item) ? 'page' : undefined}
             onclick={(e) => handleDockTabClick(e, item)}
           >
+            {#if isDockActive(item) || exitingDockIndex === idx}
+              <div class="dock-tab-pill" aria-hidden="true"></div>
+            {/if}
             <span class="dock-tab-icon">
               {#if item.id === 'beranda'}
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -601,7 +556,39 @@
                   <line x1="6" y1="20" x2="6" y2="14" />
                   <line x1="2" y1="20" x2="22" y2="20" />
                 </svg>
-              {:else if item.id === 'tabungan'}
+              {/if}
+            </span>
+            <span class="dock-tab-label">{item.label}</span>
+          </a>
+        {/each}
+
+        <!-- Tombol Tambah Tengah (Dome / Half-Circle Protruding) -->
+        <button
+          type="button"
+          class="dock-center-btn interactive-tap"
+          onclick={() => openCreate(null)}
+          aria-label="Tambah Transaksi"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+        {#each navItems.slice(2, 4) as item, idx}
+          <a
+            bind:this={dockTabEls[idx + 2]}
+            href={item.href}
+            class="dock-tab {isDockActive(item) ? 'active' : exitingDockIndex === idx + 2 ? 'exiting' : ''}"
+            data-tab-id={item.id}
+            aria-current={isDockActive(item) ? 'page' : undefined}
+            onclick={(e) => handleDockTabClick(e, item)}
+          >
+            {#if isDockActive(item) || exitingDockIndex === idx + 2}
+              <div class="dock-tab-pill" aria-hidden="true"></div>
+            {/if}
+            <span class="dock-tab-icon">
+              {#if item.id === 'tabungan'}
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="6" />
@@ -731,6 +718,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     touch-action: pan-x pan-y;
+    will-change: scroll-position;
   }
 
   .tab-carousel-track::-webkit-scrollbar {
@@ -787,46 +775,15 @@
     display: none;
   }
 
-  /* Floating Action Button (FAB) Tambah (+) di atas nav */
-  .fab-tambah {
-    position: fixed;
-    bottom: calc(88px + env(safe-area-inset-bottom, 12px));
-    right: max(24px, calc(50% - 360px + 24px));
-    height: 52px;
-    padding: 0 18px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--accent);
-    color: var(--on-accent);
-    border-radius: var(--r, 10px);
-    border: none;
-    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.12);
-    font-family: var(--font-ui);
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    z-index: 70;
-    transition: opacity 120ms var(--ease), transform 120ms var(--ease);
-  }
-
-  .fab-tambah:active {
-    opacity: 0.85;
-    transform: scale(0.96);
-  }
-
-  .fab-label {
-    line-height: 1;
-  }
-
-  /* Floating Dock Kapsul (iPhone style rounded 50%) */
+  /* Floating Dock Kapsul */
   .bottom-dock {
     position: fixed;
+    view-transition-name: bottom-dock;
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     width: fit-content;
-    max-width: min(calc(100vw - 32px), 420px);
+    max-width: min(calc(100vw - 24px), 440px);
     background: var(--bg-raised);
     border: 1px solid var(--line);
     border-radius: 9999px;
@@ -835,55 +792,108 @@
     -webkit-backdrop-filter: blur(16px);
     z-index: 60;
     box-sizing: border-box;
-    padding: 6px;
+    padding: 6px 8px;
   }
 
   .dock-inner {
-    position: relative;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 6px;
     width: fit-content;
     box-sizing: border-box;
   }
 
-  /* Single Liquid Bubble Runner */
-  .dock-bubble-runner {
+  /* In-Place Staged Tab Pill Fill (Single Pristine Surface) */
+  .dock-tab-pill {
     position: absolute;
-    top: 0;
-    left: 0;
-    height: 44px;
+    inset: 0;
     border-radius: 9999px;
-    z-index: 0;
+    background: var(--fg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transform-origin: left center;
     pointer-events: none;
-    transition: transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
-                width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
-    will-change: transform, width;
-  }
-
-  .dock-bubble-liquid {
-    width: 100%;
-    height: 100%;
-    border-radius: 9999px;
-    background: var(--accent);
-    box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.2);
-    transform-origin: center center;
-    will-change: transform;
-  }
-
-  /* Dock Tabs: Inactive (compact round icon-only) vs Active (pill width) */
-  .dock-tab {
-    position: relative;
     z-index: 1;
+    will-change: transform, opacity;
+  }
+
+  .dock-tab.active .dock-tab-pill {
+    animation: pillEnterStages 0.32s linear forwards;
+  }
+
+  .dock-tab.exiting .dock-tab-pill {
+    animation: pillExitStages 0.24s linear forwards;
+  }
+
+  @keyframes pillEnterStages {
+    0% {
+      transform: scaleX(0.28);
+      opacity: 0.95;
+    }
+    35% {
+      transform: scaleX(0.52);
+      opacity: 1;
+    }
+    50% {
+      transform: scaleX(0.58);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pillExitStages {
+    0% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    45% {
+      transform: scaleX(0.5);
+      opacity: 0.85;
+    }
+    100% {
+      transform: scaleX(0);
+      opacity: 0;
+    }
+  }
+
+  /* Center Tambah Action Button (Protruding Dome / Semicircle) */
+  .dock-center-btn {
+    position: relative;
+    z-index: 5;
     display: inline-flex;
-    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0;
-    height: 44px;
-    width: 44px;
-    min-width: 44px;
+    width: 52px;
+    height: 52px;
+    margin-top: -16px;
+    border-radius: 9999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 2px solid var(--bg-raised);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .dock-center-btn:active {
+    transform: scale(0.92);
+  }
+
+  /* Dock Tabs: Inactive (compact round icon-only) vs Active (capsule/pill) vs Exiting */
+  .dock-tab {
+    position: relative;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
     padding: 0;
     border-radius: 9999px;
     text-decoration: none;
@@ -891,58 +901,60 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
-                color 0.25s ease,
-                padding 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
-                gap 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
+    overflow: hidden;
+    transition: max-width 0.22s linear, padding 0.22s linear, color 0.18s linear;
   }
 
   @media (hover: hover) {
-    .dock-tab:not(.active):hover {
+    .dock-tab:not(.active):not(.exiting):hover {
       color: var(--fg);
       background: rgba(0, 0, 0, 0.04);
     }
   }
 
-  .dock-tab:active {
-    transform: scale(0.95);
-  }
-
-  /* Tab Aktif (lebar menyesuaikan konten, teks putih) */
+  /* Tab Aktif (Capsule terbungkus dengan icon + label di atas fill bertahap) */
   .dock-tab.active {
-    gap: 8px;
-    padding: 0 16px 0 14px;
-    color: var(--on-accent);
+    color: var(--bg);
+    padding: 0 14px 0 10px;
+    width: auto;
+    min-width: 40px;
+    max-width: 150px;
+    gap: 6px;
+    transition: max-width 0.32s linear, padding 0.32s linear, color 0.18s linear;
   }
 
-  .dock-tab[data-tab-id='beranda'].active {
-    width: 116px;
-  }
-  .dock-tab[data-tab-id='statistik'].active {
-    width: 110px;
-  }
-  .dock-tab[data-tab-id='tabungan'].active {
-    width: 120px;
-  }
-  .dock-tab[data-tab-id='pengaturan'].active {
-    width: 136px;
+  .dock-tab.active .dock-tab-label {
+    display: inline-block;
+    animation: tabLabelFade 0.16s linear 0.16s both;
   }
 
-  /* Icon & Wave Ring Animation */
+  .dock-tab.exiting {
+    color: var(--fg-muted);
+    padding: 0;
+    max-width: 40px;
+    gap: 0;
+    transition: max-width 0.24s linear, padding 0.24s linear, color 0.16s linear;
+  }
+
+  .dock-tab.exiting .dock-tab-label {
+    display: inline-block;
+    animation: tabLabelFadeOut 0.08s linear forwards;
+  }
+
+  /* Icon */
   .dock-tab-icon {
     position: relative;
+    z-index: 5;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     line-height: 1;
     flex-shrink: 0;
-    z-index: 1;
   }
 
   .dock-tab-icon svg {
@@ -952,82 +964,47 @@
     flex-shrink: 0;
   }
 
-  .dock-tab.active .dock-tab-icon::before {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    background: radial-gradient(circle, currentColor 0%, transparent 70%);
-    opacity: 0.2;
-    pointer-events: none;
-    z-index: -1;
-  }
-
-  .dock-tab.active .dock-tab-icon::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    border: 1.5px solid currentColor;
-    opacity: 0;
-    pointer-events: none;
-    z-index: -1;
-    animation: dock-icon-wave 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-  }
-
-  @keyframes dock-icon-wave {
-    0% {
-      transform: scale(0.8);
-      opacity: 0.7;
-      box-shadow: 0 0 0 0 currentColor;
-    }
-    50% {
-      transform: scale(1.35);
-      opacity: 0;
-      box-shadow: 0 0 4px 1px currentColor;
-    }
-    100% {
-      transform: scale(1.5);
-      opacity: 0;
-      box-shadow: 0 0 0 0 transparent;
-    }
-  }
-
   /* Label Text: Collapsed when inactive, expands when active */
   .dock-tab-label {
     font-size: var(--fs-cap, 13px);
     font-family: var(--font-ui);
     line-height: 1;
     font-weight: 600;
-    max-width: 0;
-    width: 0;
-    opacity: 0;
-    overflow: hidden;
     white-space: nowrap;
     pointer-events: none;
     margin: 0;
-    transform: translateX(-4px);
-    transition: max-width 0.42s cubic-bezier(0.2, 0.9, 0.3, 1),
-                opacity 0.25s ease,
-                transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
+    display: none;
+    position: relative;
+    z-index: 5;
   }
 
-  .dock-tab.active .dock-tab-label {
-    max-width: 120px;
-    width: auto;
-    opacity: 1;
-    margin-left: 0;
-    transform: translateX(0);
+  @keyframes tabLabelFade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes tabLabelFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .dock-bubble-runner,
+    .dock-tab-pill,
     .dock-tab,
-    .dock-tab-label {
-      transition: none;
-    }
-    .dock-tab.active .dock-tab-icon::after {
-      animation: none;
+    .dock-tab.active,
+    .dock-tab.exiting,
+    .dock-tab-label,
+    .dock-center-btn {
+      transition: none !important;
+      animation: none !important;
     }
   }
 </style>

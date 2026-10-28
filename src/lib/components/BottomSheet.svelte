@@ -83,14 +83,14 @@
     inset: 0;
     background: var(--overlay);
     z-index: 100;
-    animation: fadeIn 200ms ease-out forwards;
+    animation: scrimFadeIn 200ms ease-out forwards;
   }
 
   .sheet-container {
     position: fixed;
     left: 50%;
     bottom: 0;
-    transform: translateX(-50%);
+    transform: translate(-50%, 0);
     width: 100%;
     max-width: 720px;
     background: var(--bg-raised);
@@ -104,7 +104,7 @@
     max-height: 88vh;
     display: flex;
     flex-direction: column;
-    animation: slideUp 240ms var(--ease) forwards;
+    animation: sheetSlideUp 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -183,7 +183,7 @@
     color: var(--fg);
   }
 
-  @keyframes fadeIn {
+  @keyframes scrimFadeIn {
     from {
       opacity: 0;
     }
@@ -192,7 +192,7 @@
     }
   }
 
-  @keyframes slideUp {
+  @keyframes sheetSlideUp {
     from {
       transform: translate(-50%, 100%);
     }
