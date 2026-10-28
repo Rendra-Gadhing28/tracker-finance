@@ -19,6 +19,7 @@
     initData,
     budgets,
     transactions,
+    transactionsThisWeek,
     goals,
     settings,
     budgetSummary,
@@ -28,6 +29,7 @@
   } from '$lib/stores/data.js';
   import { sync } from '$lib/stores/sync.js';
   import { formatRp } from '$lib/money.js';
+  import { getWeekRange, isDateInWeek } from '$lib/week.js';
 
   /**
    * @typedef {Object} Props
@@ -315,10 +317,22 @@
     triggerCatReaction
   });
 
-  // Calculate category spent map for warning pills
+  // Active transactions for TransactionSheet (scoped to active week, resets each week)
+  const activeWeekTransactions = $derived.by(() => {
+    if (activeWeekDate) {
+      const startDay = $settings?.awal_minggu ?? 1;
+      const range = getWeekRange(new Date(activeWeekDate), startDay);
+      return ($transactions || []).filter((tx) =>
+        isDateInWeek(tx.tanggal, range.start, range.end)
+      );
+    }
+    return $transactionsThisWeek || [];
+  });
+
+  // Calculate category spent map for warning pills (scoped to active week)
   const categorySpentMap = $derived.by(() => {
     const map = {};
-    for (const tx of $transactions || []) {
+    for (const tx of activeWeekTransactions) {
       if (tx.tipe === 'keluar' && tx.kategori_id) {
         map[tx.kategori_id] = (map[tx.kategori_id] || 0) + (Number(tx.nominal) || 0);
       }

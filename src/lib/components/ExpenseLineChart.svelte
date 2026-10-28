@@ -155,7 +155,6 @@
             y={Math.max(12, p.y - 8)}
             text-anchor="middle"
             class="point-label num"
-            class:label-over={p.isOver}
             class:label-today={p.isToday}
           >
             {compact(p.nominal)}
@@ -169,9 +168,8 @@
           r={p.isToday ? 5.5 : 4.5}
           class="point-dot"
           class:dot-today={p.isToday}
-          class:dot-over={p.isOver}
-          stroke={p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)'}
-          fill={p.isToday ? (p.isOver ? 'var(--expense, #A8452A)' : 'var(--accent)') : 'var(--bg-raised, #FFF)'}
+          stroke="var(--accent)"
+          fill={p.isToday ? 'var(--accent)' : 'var(--bg-raised, #FFF)'}
           stroke-width="2"
         />
 
@@ -332,11 +330,6 @@
       opacity: 1;
       transform: translateY(0);
     }
-  }
-
-  .point-label.label-over {
-    fill: var(--expense, #A8452A);
-    font-weight: 600;
   }
 
   .point-label.label-today {

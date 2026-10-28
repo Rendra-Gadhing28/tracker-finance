@@ -183,7 +183,6 @@
   });
 
   const dailyBudgetLimit = $derived.by(() => {
-    if (dailyJatah > 0) return dailyJatah;
     const weeklyLimit =
       ($budgets || [])
         .filter((b) => b.tipe === 'keluar')
@@ -628,7 +627,9 @@
           <span class="daily-label">Batas Hari Ini</span>
           <span class="daily-details num">
             {#if dailySisa < 0}
-              <span class="daily-over">Lewat {rupiah(Math.abs(dailySisa))}</span>
+              <span class={activeSummary.S < 0 ? 'daily-over' : 'daily-warn'}>
+                Lewat jatah {rupiah(Math.abs(dailySisa))}
+              </span>
             {:else}
               <span>Sisa {rupiah(dailySisa)} / Jatah {rupiah(dailyJatah)}</span>
             {/if}
@@ -636,7 +637,7 @@
         </div>
         <ProgressBar
           value={dailyJatah > 0 ? dailySpent / dailyJatah : 0}
-          color={dailySisa < 0 ? 'var(--expense)' : dailySpentPct >= 80 ? 'var(--warn)' : 'var(--accent)'}
+          color={activeSummary.S < 0 ? 'var(--expense)' : dailySisa < 0 ? 'var(--warn)' : dailySpentPct >= 80 ? 'var(--warn)' : 'var(--accent)'}
         />
       </section>
     {/if}
@@ -1129,6 +1130,11 @@
 
   .daily-over {
     color: var(--expense);
+    font-weight: 600;
+  }
+
+  .daily-warn {
+    color: var(--warn);
     font-weight: 600;
   }
 

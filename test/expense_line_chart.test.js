@@ -80,4 +80,39 @@ console.log('--- RUNNING EXPENSE LINE CHART TESTS ---');
   console.log('✓ budget line coordinate math verified');
 }
 
+// Test 4: Weekly boundary reset for category spent map
+{
+  const { getWeekRange, isDateInWeek } = await import('../src/lib/week.js');
+  
+  // Week 1: 12-18 Oct 2026
+  // Week 2: 19-25 Oct 2026
+  const week2Today = new Date('2026-10-19T10:00:00+07:00'); // Senin awal minggu 2
+  const week2Range = getWeekRange(week2Today, 1);
+
+  const txs = [
+    // Transaksi minggu lalu (Week 1)
+    { id: 'tx-old', tipe: 'keluar', kategori_id: 'jajan', nominal: 70000, tanggal: '2026-10-15T10:00:00+07:00' },
+    // Transaksi minggu ini (Week 2)
+    { id: 'tx-new', tipe: 'keluar', kategori_id: 'jajan', nominal: 15000, tanggal: '2026-10-19T09:00:00+07:00' }
+  ];
+
+  // Hitung categorySpentMap yang scoped ke minggu aktif
+  const map = {};
+  for (const tx of txs) {
+    if (tx.tipe === 'keluar' && tx.kategori_id && isDateInWeek(tx.tanggal, week2Range.start, week2Range.end)) {
+      map[tx.kategori_id] = (map[tx.kategori_id] || 0) + tx.nominal;
+    }
+  }
+
+  // Pengeluaran kategori jajan di minggu baru HARUS 15.000, bukan 85.000 (tidak membawa 70.000 minggu lalu)
+  assert.equal(map['jajan'], 15000, 'Pengeluaran kategori harus ter-reset ke pengeluaran minggu aktif saja');
+  
+  // Batas mingguan jajan 72.500: dengan 15.000 tidak boleh over budget
+  const limitMingguan = 72500;
+  const isOverLimit = limitMingguan > 0 && map['jajan'] > limitMingguan;
+  assert.equal(isOverLimit, false, 'Kategori tidak boleh ditandai over budget di awal minggu jika belum melewati limit');
+
+  console.log('✓ weekly category reset and limit threshold verified');
+}
+
 console.log('--- ALL EXPENSE LINE CHART TESTS PASSED! ---');
