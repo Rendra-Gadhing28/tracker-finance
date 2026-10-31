@@ -29,6 +29,9 @@
     flying_money: `<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/><path d="M22 6c-2-2-5-2-7 0M2 18c2 2 5 2 7 0"/>`,
     sparkles: `<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>`,
     receipt: `<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/>`,
+    camera: `<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>`,
+    image: `<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>`,
+    upload: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>`,
     check: `<polyline points="20 6 9 17 4 12"/>`,
     'chevron-right': `<polyline points="9 18 15 12 9 6"/>`,
     'chevron-down': `<polyline points="6 9 12 15 18 9"/>`,
@@ -123,6 +126,16 @@
 
     receipt: 'receipt',
     scan: 'receipt',
+
+    '📷': 'camera',
+    camera: 'camera',
+
+    '🖼️': 'image',
+    '🖼': 'image',
+    image: 'image',
+    file: 'image',
+
+    upload: 'upload',
 
     check: 'check',
 

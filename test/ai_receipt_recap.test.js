@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { parseReceiptText } from '../src/lib/ai/receipt.js';
+import { extractTextFromImage, isValidImageInput } from '../src/lib/ai/ocr.js';
 import {
   generateMonthlyRecap,
   getMonthlyRecapKey,
@@ -126,6 +127,29 @@ const categories = [
 }
 
 // ==========================================
+// 1.7 OCR MODULE EXTRACTION TESTS
+// ==========================================
+{
+  assert.equal(typeof extractTextFromImage, 'function', 'extractTextFromImage harus berupa fungsi');
+  assert.equal(isValidImageInput(null), false, 'null bukan input valid');
+  assert.equal(isValidImageInput(''), false, 'string kosong bukan input valid');
+  assert.equal(isValidImageInput('some text'), true, 'string non-kosong adalah input valid');
+
+  await assert.rejects(
+    async () => {
+      await extractTextFromImage(null);
+    },
+    /File atau gambar tidak valid/,
+    'extractTextFromImage harus melempar error jika input tidak valid'
+  );
+
+  const testReceipt = 'INDOMARET TOTAL 20.000';
+  const extracted = await extractTextFromImage(testReceipt);
+  assert.equal(extracted, testReceipt, 'OCR harus mengembalikan teks di environment test');
+  console.log('✓ Modul OCR extractTextFromImage terverifikasi');
+}
+
+// ==========================================
 // 2. MONTHLY RECAP TESTS
 // ==========================================
 
@@ -237,6 +261,7 @@ import { readFileSync } from 'node:fs';
     '💸', 'flying_money',
     'sparkles', 'ai',
     'receipt', 'scan',
+    'camera', 'image', 'upload',
     'check',
     'chevron-right', 'arrow-right',
     'chevron-down', 'arrow-down',
@@ -246,6 +271,11 @@ import { readFileSync } from 'node:fs';
   for (const alias of requiredAliases) {
     assert.ok(iconSrc.includes(alias), `Icon component harus memetakan "${alias}"`);
   }
+
+  // Check specific SVG icons
+  assert.ok(iconSrc.includes('camera:'), 'Icon component harus memiliki icon camera');
+  assert.ok(iconSrc.includes('image:'), 'Icon component harus memiliki icon image');
+  assert.ok(iconSrc.includes('upload:'), 'Icon component harus memiliki icon upload');
 
   // Fallback rendering
   assert.ok(iconSrc.includes('{name}</span>'), 'Fallback harus merender <span>{name}</span>');
@@ -277,13 +307,20 @@ import { readFileSync } from 'node:fs';
   assert.ok(recapSheetSrc.includes('top-categories-section'), 'MonthlyRecapSheet harus memiliki top categories section');
   console.log('✓ MonthlyRecapSheet komponen dan struktur UI terverifikasi');
 
-  // 4.3 TransactionSheet AI Scan & Icon checks
+  // 4.3 TransactionSheet AI Scan & OCR checks
   const txSheetSrc = readFileSync('src/lib/components/TransactionSheet.svelte', 'utf8');
   assert.ok(txSheetSrc.includes('parseReceiptText'), 'TransactionSheet harus mengimpor parseReceiptText');
+  assert.ok(txSheetSrc.includes('extractTextFromImage'), 'TransactionSheet harus mengimpor extractTextFromImage');
+  assert.ok(txSheetSrc.includes('cameraInputRef'), 'TransactionSheet harus memiliki referensi cameraInputRef');
+  assert.ok(txSheetSrc.includes('fileInputRef'), 'TransactionSheet harus memiliki referensi fileInputRef');
+  assert.ok(txSheetSrc.includes('capture="environment"'), 'Input kamera harus memiliki capture="environment"');
+  assert.ok(txSheetSrc.includes('scan-method-btn'), 'TransactionSheet harus memiliki scan-method-btn');
+  assert.ok(txSheetSrc.includes('receipt-image-preview'), 'TransactionSheet harus memiliki preview gambar');
+  assert.ok(txSheetSrc.includes('isOcrLoading'), 'TransactionSheet harus memiliki state isOcrLoading');
   assert.ok(txSheetSrc.includes('scan-receipt-toggle-btn') || txSheetSrc.includes('scan-receipt-btn'), 'TransactionSheet harus memiliki tombol trigger Scan Struk');
   assert.ok(txSheetSrc.includes('scan-receipt-input') || txSheetSrc.includes('scan-receipt-textarea'), 'TransactionSheet harus memiliki textarea struk');
   assert.ok(txSheetSrc.includes('<Icon name={cat.ikon}'), 'TransactionSheet harus menggunakan Icon untuk cat.ikon');
-  console.log('✓ TransactionSheet integrasi AI Scan dan Icon SVG terverifikasi');
+  console.log('✓ TransactionSheet integrasi AI Scan, kamera, galeri, OCR, dan Icon SVG terverifikasi');
 
   // 4.4 Statistik Page checks
   const statsSrc = readFileSync('src/routes/statistik/+page.svelte', 'utf8');

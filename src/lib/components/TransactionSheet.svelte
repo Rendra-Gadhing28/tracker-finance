@@ -5,6 +5,7 @@
   import Chip from './Chip.svelte';
   import Icon from './Icon.svelte';
   import { parseReceiptText } from '../ai/receipt.js';
+  import { extractTextFromImage } from '../ai/ocr.js';
   import { formatRp, parseRp } from '../money.js';
   import { toWIBISOString, getWIBParts, createWIBDate } from '../week.js';
 
@@ -55,8 +56,50 @@
   let isScanOpen = $state(false);
   let scanRawText = $state('');
   let scanFeedback = $state('');
+  let selectedImagePreview = $state(null);
+  let isOcrLoading = $state(false);
+  let showTextarea = $state(false);
+  let cameraInputRef = $state(null);
+  let fileInputRef = $state(null);
 
-  function handleExtractReceipt() {
+  function clearImagePreview() {
+    if (selectedImagePreview && typeof selectedImagePreview === 'string' && selectedImagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    selectedImagePreview = null;
+    if (cameraInputRef) cameraInputRef.value = '';
+    if (fileInputRef) fileInputRef.value = '';
+  }
+
+  async function handleFileSelected(e) {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+
+    if (selectedImagePreview && typeof selectedImagePreview === 'string' && selectedImagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    selectedImagePreview = URL.createObjectURL(file);
+    isOcrLoading = true;
+    scanFeedback = '';
+
+    try {
+      const ocrText = await extractTextFromImage(file);
+      if (ocrText && ocrText.trim()) {
+        scanRawText = ocrText.trim();
+        handleExtractReceipt('✓ Struk berhasil dipindai dari gambar!');
+      } else {
+        scanFeedback = 'Teks struk tidak terdeteksi. Silakan ketik nominal/keterangan.';
+        showTextarea = true;
+      }
+    } catch (err) {
+      scanFeedback = err?.message || 'Tidak dapat memuat OCR otomatis. Silakan gunakan input teks.';
+      showTextarea = true;
+    } finally {
+      isOcrLoading = false;
+    }
+  }
+
+  function handleExtractReceipt(customSuccessMsg) {
     if (!scanRawText.trim()) return;
     const res = parseReceiptText(scanRawText, categories);
     if (res && res.success) {
@@ -81,15 +124,17 @@
           customDateVal = res.tanggal;
         }
       }
-      scanFeedback = '✓ Ekstrak struk berhasil!';
+      scanFeedback = customSuccessMsg || '✓ Ekstrak struk berhasil!';
       setTimeout(() => {
         scanFeedback = '';
         isScanOpen = false;
         scanRawText = '';
+        clearImagePreview();
         scrollToSelectedChip();
-      }, 500);
+      }, 700);
     } else {
       scanFeedback = 'Format teks struk tidak dikenali';
+      showTextarea = true;
       setTimeout(() => {
         scanFeedback = '';
       }, 2500);
@@ -100,6 +145,8 @@
     isScanOpen = false;
     scanRawText = '';
     scanFeedback = '';
+    showTextarea = false;
+    clearImagePreview();
   }
 
   const DEFAULT_MASUK_CAT = {
@@ -550,17 +597,86 @@
     <!-- AI Scan Receipt Expandable Box -->
     {#if isScanOpen}
       <div class="scan-receipt-box">
-        <textarea
-          class="scan-receipt-input"
-          placeholder="Tempel teks struk belanja, SMS m-banking, invoice, QRIS, dll..."
-          rows="3"
-          bind:value={scanRawText}
-        ></textarea>
+        <!-- Hidden file inputs for Camera and File Picker -->
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          class="hidden-file-input"
+          bind:this={cameraInputRef}
+          onchange={handleFileSelected}
+        />
+        <input
+          type="file"
+          accept="image/*"
+          class="hidden-file-input"
+          bind:this={fileInputRef}
+          onchange={handleFileSelected}
+        />
+
+        <!-- Scan Method Selector -->
+        <div class="scan-methods-row">
+          <button
+            type="button"
+            class="scan-method-btn"
+            onclick={() => cameraInputRef?.click()}
+          >
+            <Icon name="camera" size={16} />
+            <span>Kamera</span>
+          </button>
+          <button
+            type="button"
+            class="scan-method-btn"
+            onclick={() => fileInputRef?.click()}
+          >
+            <Icon name="image" size={16} />
+            <span>Galeri / File</span>
+          </button>
+          <button
+            type="button"
+            class="scan-method-btn {showTextarea ? 'active' : ''}"
+            onclick={() => (showTextarea = !showTextarea)}
+          >
+            <Icon name="note" size={16} />
+            <span>Teks</span>
+          </button>
+        </div>
+
+        {#if selectedImagePreview}
+          <div class="receipt-image-preview">
+            <img src={selectedImagePreview} alt="Preview Struk" />
+            <button
+              type="button"
+              class="remove-preview-btn"
+              onclick={clearImagePreview}
+              aria-label="Hapus gambar"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        {/if}
+
+        {#if isOcrLoading}
+          <div class="scan-loading-pill">
+            <span class="ocr-spinner"></span> Memindai teks struk...
+          </div>
+        {/if}
+
+        {#if showTextarea || scanRawText.trim()}
+          <textarea
+            class="scan-receipt-input"
+            placeholder="Tempel teks struk belanja, SMS m-banking, invoice, QRIS, dll..."
+            rows="3"
+            bind:value={scanRawText}
+          ></textarea>
+        {/if}
+
         {#if scanFeedback}
           <div class="scan-feedback-pill {scanFeedback.startsWith('✓') ? 'success' : 'error'}">
             {scanFeedback}
           </div>
         {/if}
+
         <div class="scan-receipt-btn-row">
           <Button
             variant="secondary"
@@ -572,8 +688,8 @@
           <Button
             variant="primary"
             size="sm"
-            onclick={handleExtractReceipt}
-            disabled={!scanRawText.trim()}
+            onclick={() => handleExtractReceipt()}
+            disabled={!scanRawText.trim() || isOcrLoading}
           >
             <Icon name="sparkles" size={14} />
             <span>Ekstrak Otomatis</span>
@@ -883,6 +999,114 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  .hidden-file-input {
+    display: none;
+  }
+
+  .scan-methods-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .scan-method-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    background: var(--bg);
+    border: 1px solid var(--edge-soft);
+    color: var(--fg);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+
+  .scan-method-btn:hover {
+    border-color: var(--accent);
+    background: rgba(31, 92, 70, 0.06);
+    color: var(--accent);
+  }
+
+  .scan-method-btn.active {
+    background: rgba(31, 92, 70, 0.12);
+    border-color: var(--accent);
+    color: var(--komorebi);
+    font-weight: 600;
+  }
+
+  .receipt-image-preview {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-height: 140px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px dashed var(--edge-soft);
+    border-radius: 10px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .receipt-image-preview img {
+    max-height: 128px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+
+  .remove-preview-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .remove-preview-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  .scan-loading-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: rgba(31, 92, 70, 0.1);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .ocr-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ocrSpin 0.7s linear infinite;
+  }
+
+  @keyframes ocrSpin {
+    to {
+      transform: rotate(360deg);
     }
   }
 
