@@ -159,10 +159,36 @@ const categories = [
   assert.ok(!res.candidates.includes(2500), 'candidates tidak boleh memuat nominal KEMBALIAN 2500');
   assert.ok(!res.candidates.includes(4700), 'candidates tidak boleh memuat nominal PPN 4700');
   assert.ok(!res.candidates.some(c => c > 10000000), 'candidates tidak boleh memuat barcode EAN');
+  assert.ok(!res.candidates.includes(12500), 'candidates tidak boleh memuat harga item 12500');
+  assert.ok(!res.candidates.includes(15000), 'candidates tidak boleh memuat harga item 15000');
+  assert.ok(!res.candidates.includes(20000), 'candidates tidak boleh memuat harga item 20000');
   console.log('✓ Struk Indomaret lengkap terurai akurat dengan kandidat logis:', res.candidates);
 }
 
-// 1.8 OCR Typo Auto-Fix & Candidate Ranking
+// 1.8 Format Struk dengan TOTAL ITEM / BELANJA
+{
+  const text = `
+    INDOMARET POINT
+    01/10/26 14:32
+    ROTI COKLAT     12.500
+    SUSU KOTAK      15.000
+    SNACK KENTANG   20.000
+    TOTAL ITEM / BELANJA : 3 / 47.500
+    TUNAI           50.000
+    KEMBALIAN        2.500
+  `;
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'Struk TOTAL ITEM / BELANJA harus berhasil diparse');
+  assert.equal(res.nominal, 47500, 'Nominal harus 47500 dan BUKAN jumlah item 3');
+  assert.ok(!res.candidates.includes(3), 'candidates tidak boleh memuat angka item 3');
+  assert.ok(!res.candidates.includes(12500), 'candidates tidak boleh memuat harga item satuan');
+  assert.ok(!res.candidates.includes(15000), 'candidates tidak boleh memuat harga item satuan');
+  assert.ok(!res.candidates.includes(20000), 'candidates tidak boleh memuat harga item satuan');
+  console.log('✓ Struk format "TOTAL ITEM / BELANJA : 3 / 47.500" berhasil diparse dengan nominal 47500');
+}
+
+// 1.9 OCR Typo Auto-Fix & Candidate Ranking
 {
   const typoReceipt = `
     ALFAMART
@@ -177,7 +203,7 @@ const categories = [
 }
 
 // ==========================================
-// 1.9 OCR MODULE EXTRACTION TESTS
+// 1.10 OCR MODULE EXTRACTION TESTS
 // ==========================================
 {
   assert.equal(typeof extractTextFromImage, 'function', 'extractTextFromImage harus berupa fungsi');
