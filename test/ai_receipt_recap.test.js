@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   parseReceiptText,
   extractNominalCandidates,
+  parseNumberFromLine,
   fixOcrNumberTypos
 } from '../src/lib/ai/receipt.js';
 import {
@@ -418,6 +419,60 @@ import { readFileSync } from 'node:fs';
   const goalSrc = readFileSync('src/lib/components/GoalSheet.svelte', 'utf8');
   assert.ok(goalSrc.includes('Icon name="warning"'), 'GoalSheet harus menggunakan Icon warning');
   console.log('✓ Emoji replacement di AchievementSheet dan GoalSheet terverifikasi');
+}
+
+// ==========================================
+// 5. PWA SHARE TARGET & PRIVACY TESTS
+// ==========================================
+{
+  // 5.1 vite.config.js PWA Share Target
+  const viteConfigSrc = readFileSync('vite.config.js', 'utf8');
+  assert.ok(viteConfigSrc.includes('share_target'), 'vite.config.js harus mendefinisikan share_target');
+  assert.ok(viteConfigSrc.includes("action: '/'"), "share_target action harus '/'");
+  assert.ok(viteConfigSrc.includes('params:'), 'share_target harus memiliki params');
+  assert.ok(viteConfigSrc.includes("title: 'title'"), "params harus memuat title: 'title'");
+  assert.ok(viteConfigSrc.includes("text: 'text'"), "params harus memuat text: 'text'");
+  assert.ok(viteConfigSrc.includes("url: 'url'"), "params harus memuat url: 'url'");
+  console.log('✓ vite.config.js PWA Web Share Target API terkonfigurasi dengan benar');
+
+  // 5.2 src/routes/+layout.svelte URL scrubbing and in-memory parsing
+  const layoutSrc = readFileSync('src/routes/+layout.svelte', 'utf8');
+  assert.ok(layoutSrc.includes('history.replaceState'), 'Layout harus memuat history.replaceState untuk scrubbing URL');
+  assert.ok(layoutSrc.includes('parseReceiptText'), 'Layout harus memanggil parseReceiptText untuk parsing in-memory');
+  console.log('✓ Penanganan share target & privasi in-memory di +layout.svelte terverifikasi');
+
+  // 5.3 Generic QRIS share text parsing
+  const text = 'BCA: Pembayaran QRIS berhasil ke KOPI SOE sebesar Rp 24.000 pada 31/10/2026';
+  const res = parseReceiptText(text, categories);
+  assert.equal(res.success, true, 'Share QRIS generic harus berhasil diparse');
+  assert.equal(res.nominal, 24000, 'Nominal harus 24000');
+  assert.equal(res.tipe, 'keluar', 'Tipe harus keluar');
+  assert.equal(res.kategori_id, 'jajan', 'Kategori KOPI SOE harus jajan');
+  assert.ok(res.catatan.includes('KOPI SOE'), `Catatan harus memuat KOPI SOE, dapat: "${res.catatan}"`);
+  console.log('✓ Format teks share QRIS generic berhasil diparse');
+
+  // 5.4 Mutasi dengan tanda minus
+  const minusText = '- Rp 35.000 pada 31/10/2026 ke WARUNG MAKAN MASUK JAYA';
+  const minusRes = parseReceiptText(minusText, categories);
+  assert.equal(minusRes.success, true, 'Mutasi minus harus berhasil diparse');
+  assert.equal(minusRes.tipe, 'keluar', 'Tipe harus keluar meski ada kata MASUK JAYA di merchant');
+  assert.equal(minusRes.nominal, 35000, 'Nominal harus 35000');
+  assert.ok(minusRes.catatan.includes('WARUNG MAKAN MASUK JAYA'), `Catatan harus memuat WARUNG MAKAN MASUK JAYA, dapat: "${minusRes.catatan}"`);
+  console.log('✓ Notifikasi mutasi bertanda minus berhasil diparse sebagai pengeluaran');
+
+  // 5.5 Notifikasi dengan kata pembayaran
+  const bayarText = 'Pembayaran QRIS Berhasil ke Toko Gaji Komputer Rp 45.000 pada 31/10/2026';
+  const bayarRes = parseReceiptText(bayarText, categories);
+  assert.equal(bayarRes.success, true, 'Notifikasi pembayaran harus berhasil diparse');
+  assert.equal(bayarRes.tipe, 'keluar', 'Tipe harus keluar meski ada kata Gaji');
+  assert.equal(bayarRes.nominal, 45000, 'Nominal harus 45000');
+  console.log('✓ Notifikasi pembayaran berhasil diparse sebagai pengeluaran');
+
+  // 5.6 Helper parseNumberFromLine minus patterns
+  assert.equal(parseNumberFromLine('Rp -25.000'), 25000, 'Rp -25.000 harus 25000');
+  assert.equal(parseNumberFromLine('-Rp 25.000'), 25000, '-Rp 25.000 harus 25000');
+  assert.equal(parseNumberFromLine('- 25.000'), 25000, '- 25.000 harus 25000');
+  console.log('✓ Helper parseNumberFromLine dengan pola minus diverifikasi');
 }
 
 console.log('\n--- ALL AI RECEIPT & MONTHLY RECAP TESTS PASSED ---');

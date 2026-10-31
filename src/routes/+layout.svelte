@@ -197,8 +197,56 @@
     let lenisInstance = null;
     let rafId = null;
 
+    let pendingSharePayload = null;
+    if (typeof window !== 'undefined' && window.location.search) {
+      try {
+        const urlObj = new URL(window.location.href);
+        const sharedText = urlObj.searchParams.get('text') || '';
+        const sharedTitle = urlObj.searchParams.get('title') || '';
+        const sharedUrl = urlObj.searchParams.get('url') || '';
+
+        if (sharedText || sharedTitle || sharedUrl) {
+          // Segera bersihkan parameter query dari URL dan riwayat browser demi privasi pengguna
+          urlObj.search = '';
+          window.history.replaceState({}, '', urlObj.pathname + (urlObj.hash || ''));
+
+          // Simpan payload secara in-memory (ephemeral)
+          pendingSharePayload = [sharedTitle, sharedText, sharedUrl]
+            .filter(Boolean)
+            .join('\n')
+            .trim();
+        }
+      } catch {
+        // Abaikan error parsing URL
+      }
+    }
+
     initData().then((res) => {
       cleanUp = res;
+
+      if (pendingSharePayload) {
+        import('$lib/ai/receipt.js').then(({ parseReceiptText }) => {
+          const currentCats = $budgets?.categories || (Array.isArray($budgets) ? $budgets : []);
+          const res = parseReceiptText(pendingSharePayload, currentCats);
+          if (res && res.success && res.nominal > 0) {
+            openCreate({
+              tipe: res.tipe || 'keluar',
+              nominal: res.nominal,
+              tanggal: res.tanggal,
+              kategori_id: res.kategori_id || 'jajan',
+              catatan: res.catatan || 'QRIS',
+              candidates: res.candidates || []
+            });
+            showToast(`✓ QRIS terdeteksi: ${formatRp(res.nominal)}`);
+          } else {
+            openCreate({
+              tipe: 'keluar',
+              catatan: (res?.catatan || pendingSharePayload).slice(0, 50)
+            });
+          }
+          pendingSharePayload = null;
+        });
+      }
     });
 
     const handlePopState = () => {

@@ -375,9 +375,12 @@
 
           goalId = getDefaultGoalId();
 
-          rawNominal = '';
-          catatan = '';
-          showCatatan = false;
+          rawNominal = initialTx?.nominal ? String(initialTx.nominal) : '';
+          catatan = initialTx?.catatan || '';
+          showCatatan = Boolean(catatan);
+          if (Array.isArray(initialTx?.candidates) && initialTx.candidates.length > 0) {
+            scanCandidates = initialTx.candidates;
+          }
 
           if (initialTx?.tanggal) {
             const txParts = getWIBParts(initialTx.tanggal);

@@ -88,13 +88,19 @@ export function fixOcrNumberTypos(str) {
     });
 }
 
-function parseNumberFromLine(line) {
+export function parseNumberFromLine(line) {
+  const minusMatch = line.match(MINUS_REGEX);
+  if (minusMatch) {
+    const parsed = parseIndonesianAmount(minusMatch[1]);
+    if (parsed > 0 && parsed < 1000000000) return parsed;
+  }
+
   const kMatch = line.match(/\b(\d+(?:[.,]\d+)?)\s*(?:k|rb)\b/i);
   if (kMatch) {
     return Math.round(parseFloat(kMatch[1].replace(',', '.')) * 1000);
   }
 
-  const rpMatch = line.match(/(?:rp\.?|idr)\s*([0-9.,]+)/i);
+  const rpMatch = line.match(/(?:rp\.?|idr)\s*-?\s*([0-9.,]+)/i);
   if (rpMatch) {
     const parsed = parseIndonesianAmount(rpMatch[1]);
     if (parsed > 0 && parsed < 1000000000) return parsed;
@@ -118,10 +124,12 @@ function parseNumberFromLine(line) {
 const MINIMARKET_TOTAL_REGEX = /(?:total\s*item\s*[/]\s*(?:total\s*)?belanja|total\s*item\s*[/]\s*belanja|total\s*belanja|total\s*item\s*belanja|total\s*akhir|total\s*harga|harga\s*jual)/i;
 const STANDARD_TOTAL_REGEX = /(?:grand\s*total|total\s*bayar|total\s*:|\btotal\b|tagihan|subtotal|jumlah\s*bayar)/i;
 const TRANSFER_AMOUNT_REGEX = /(?:sebesar|nominal|amount|debit|\bdb\b|kredit|\bcr\b)/i;
+const MINUS_REGEX = /(?:^|\s)(?:-\s*(?:rp\.?|idr)?|(?:rp\.?|idr)\s*-\s*)\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d{3,8})\b/i;
+const PEMBAYARAN_REGEX = /\bpembayaran\b/i;
 
 function isBlacklistedLine(line) {
   // Priority total lines are never blacklisted
-  if (MINIMARKET_TOTAL_REGEX.test(line) || STANDARD_TOTAL_REGEX.test(line)) {
+  if (MINIMARKET_TOTAL_REGEX.test(line) || STANDARD_TOTAL_REGEX.test(line) || MINUS_REGEX.test(line) || PEMBAYARAN_REGEX.test(line)) {
     return false;
   }
 
@@ -221,6 +229,30 @@ export function extractNominalCandidates(text) {
 
   // JIKA DITEMUKAN BARIS TOTAL (Priority 1 / 2):
   // Segera return, jangan masukkan item belanjaan satuan!
+  if (candidates.length > 0) {
+    return candidates.slice(0, 3);
+  }
+
+  // Priority Minus: Lines with minus expense (e.g. -Rp 28.000, - 35.000, Rp -45.000)
+  for (let i = rawLines.length - 1; i >= 0; i--) {
+    const line = rawLines[i];
+    if (MINUS_REGEX.test(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addPriorityCandidate(num);
+    }
+  }
+
+  // Priority Pembayaran: Lines with 'pembayaran' keyword
+  for (let i = rawLines.length - 1; i >= 0; i--) {
+    const line = rawLines[i];
+    if (PEMBAYARAN_REGEX.test(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addPriorityCandidate(num);
+    }
+  }
+
   if (candidates.length > 0) {
     return candidates.slice(0, 3);
   }
@@ -433,11 +465,16 @@ export function parseReceiptText(text, categories = []) {
   const lower = text.toLowerCase();
 
   // 1. Detect Tipe
+  const hasMinusExpense = /(?:^|\s)(?:-\s*(?:rp\.?|idr)?|(?:rp\.?|idr)\s*-\s*)\s*\d/i.test(text);
+  const hasPembayaran = /\bpembayaran\b/i.test(text);
+
   let tipe = 'keluar';
   const tabungKeywords = ['setor tabungan', 'celengan', 'deposito', 'tabungan berjangka'];
   const masukKeywords = ['terima transfer', 'transfer masuk', 'top up masuk', 'gaji', 'uang jajan', 'dana masuk', 'pemasukan', 'trsf cr', 'uang masuk'];
 
-  if (tabungKeywords.some((kw) => lower.includes(kw))) {
+  if (hasMinusExpense || hasPembayaran) {
+    tipe = 'keluar';
+  } else if (tabungKeywords.some((kw) => lower.includes(kw))) {
     tipe = 'tabung';
   } else if (masukKeywords.some((kw) => lower.includes(kw))) {
     tipe = 'masuk';
@@ -454,6 +491,8 @@ export function parseReceiptText(text, categories = []) {
   let bestCatId = null;
   let maxScore = 0;
   for (const entry of CATEGORY_KEYWORDS) {
+    if (tipe !== 'masuk' && entry.id === 'masuk') continue;
+    if (tipe !== 'tabung' && entry.id === 'nabung') continue;
     let score = 0;
     for (const kw of entry.keywords) {
       if (matchesWord(lower, kw)) {
@@ -469,23 +508,23 @@ export function parseReceiptText(text, categories = []) {
 
   let finalCatId = matchedCatId;
   if (Array.isArray(categories) && categories.length > 0) {
-    const directMatch = categories.find((c) => c.id === matchedCatId);
+    const directMatch = categories.find((c) => c.id === matchedCatId && (!c.tipe || c.tipe === tipe));
     if (directMatch) {
       finalCatId = directMatch.id;
     } else if (matchedCatId === 'jajan') {
-      const labelMatch = categories.find((c) => /jajan|makan|food/i.test(c.nama || c.name || ''));
+      const labelMatch = categories.find((c) => /jajan|makan|food/i.test(c.nama || c.name || '') && (!c.tipe || c.tipe === tipe));
       if (labelMatch) finalCatId = labelMatch.id;
     } else if (matchedCatId) {
-      const nameMatch = categories.find((c) => (c.nama || c.name || '').toLowerCase().includes(matchedCatId));
+      const nameMatch = categories.find((c) => (c.nama || c.name || '').toLowerCase().includes(matchedCatId) && (!c.tipe || c.tipe === tipe));
       if (nameMatch) finalCatId = nameMatch.id;
     }
 
-    if (!finalCatId || !categories.some((c) => c.id === finalCatId)) {
+    if (!finalCatId || !categories.some((c) => c.id === finalCatId && (!c.tipe || c.tipe === tipe))) {
       const typeMatch = categories.find((c) => c.tipe === tipe);
       finalCatId = typeMatch ? typeMatch.id : (matchedCatId || categories[0].id);
     }
   } else {
-    if (!finalCatId) {
+    if (!finalCatId || (tipe !== 'masuk' && finalCatId === 'masuk') || (tipe !== 'tabung' && finalCatId === 'nabung')) {
       finalCatId = tipe === 'masuk' ? 'masuk' : tipe === 'tabung' ? 'nabung' : 'jajan';
     }
   }
