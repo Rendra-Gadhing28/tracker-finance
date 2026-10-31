@@ -56,6 +56,7 @@
   let isScanOpen = $state(false);
   let scanRawText = $state('');
   let scanFeedback = $state('');
+  let scanCandidates = $state([]);
   let selectedImagePreview = $state(null);
   let isOcrLoading = $state(false);
   let showTextarea = $state(false);
@@ -103,6 +104,7 @@
     if (!scanRawText.trim()) return;
     const res = parseReceiptText(scanRawText, categories);
     if (res && res.success) {
+      scanCandidates = res.candidates || (res.nominal > 0 ? [res.nominal] : []);
       if (res.nominal) {
         rawNominal = Number(res.nominal).toLocaleString('id-ID');
       }
@@ -133,6 +135,7 @@
         scrollToSelectedChip();
       }, 700);
     } else {
+      scanCandidates = res?.candidates || [];
       scanFeedback = 'Format teks struk tidak dikenali';
       showTextarea = true;
       setTimeout(() => {
@@ -677,6 +680,23 @@
           </div>
         {/if}
 
+        {#if scanCandidates.length > 1}
+          <div class="candidate-chips-wrap">
+            <span class="candidate-label">Pilihan nominal terdeteksi:</span>
+            <div class="candidate-chips">
+              {#each scanCandidates as c}
+                <button
+                  type="button"
+                  class="candidate-chip {numericNominal === c ? 'active' : ''}"
+                  onclick={() => (rawNominal = String(c))}
+                >
+                  {formatRp(c)}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
         <div class="scan-receipt-btn-row">
           <Button
             variant="secondary"
@@ -746,6 +766,24 @@
         aria-label="Nominal transaksi"
       />
     </div>
+
+    <!-- Candidate Nominal Chips from AI Scan -->
+    {#if scanCandidates.length > 1}
+      <div class="candidate-chips-wrap">
+        <span class="candidate-label">Pilihan nominal terdeteksi:</span>
+        <div class="candidate-chips">
+          {#each scanCandidates as c}
+            <button
+              type="button"
+              class="candidate-chip {numericNominal === c ? 'active' : ''}"
+              onclick={() => (rawNominal = String(c))}
+            >
+              {formatRp(c)}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     {#if numericNominal >= 10000000}
       <p class="max-limit-hint">Maksimal Rp 10.000.000</p>
@@ -1150,6 +1188,55 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+
+  /* Candidate Nominal Chips */
+  .candidate-chips-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--glass-1);
+    border: 1px dashed var(--edge-soft);
+    animation: fadeIn 150ms ease-out;
+  }
+
+  .candidate-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg-muted);
+  }
+
+  .candidate-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .candidate-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--edge-soft);
+    color: var(--fg);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+
+  .candidate-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .candidate-chip.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
   }
 
   .type-segmented-group {

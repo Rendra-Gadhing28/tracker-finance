@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
-import { parseReceiptText } from '../src/lib/ai/receipt.js';
-import { extractTextFromImage, isValidImageInput } from '../src/lib/ai/ocr.js';
+import {
+  parseReceiptText,
+  extractNominalCandidates,
+  fixOcrNumberTypos
+} from '../src/lib/ai/receipt.js';
+import {
+  extractTextFromImage,
+  preprocessReceiptImage,
+  isValidImageInput
+} from '../src/lib/ai/ocr.js';
 import {
   generateMonthlyRecap,
   getMonthlyRecapKey,
@@ -126,11 +134,54 @@ const categories = [
   console.log('✓ Tipe masuk, tabung, dan shorthand nominal (45k) berhasil diparse');
 }
 
+// 1.7 Format Struk Indomaret/Alfamart Lengkap (Opsi A)
+{
+  const text = `
+    INDOMARET
+    01/10/26 14:32
+    ROTI COKLAT     12.500
+    SUSU KOTAK      15.000
+    SNACK KENTANG   20.000
+    TOTAL BELANJA   47.500
+    PPN 11%          4.700
+    TUNAI           50.000
+    KEMBALIAN        2.500
+    BARCODE: 8991234567890
+  `;
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'Struk Indomaret lengkap harus berhasil diparse');
+  assert.equal(res.nominal, 47500, 'Nominal harus 47500 (bukan tunai 50000, kembali 2500, ppn 4700, atau barcode)');
+  assert.ok(Array.isArray(res.candidates), 'res.candidates harus berupa array');
+  assert.ok(res.candidates.includes(47500), 'candidates harus mencakup nominal 47500');
+  assert.equal(res.candidates[0], 47500, 'Kandidat #1 harus nominal total belanja 47500');
+  assert.ok(!res.candidates.includes(50000), 'candidates tidak boleh memuat nominal TUNAI 50000');
+  assert.ok(!res.candidates.includes(2500), 'candidates tidak boleh memuat nominal KEMBALIAN 2500');
+  assert.ok(!res.candidates.includes(4700), 'candidates tidak boleh memuat nominal PPN 4700');
+  assert.ok(!res.candidates.some(c => c > 10000000), 'candidates tidak boleh memuat barcode EAN');
+  console.log('✓ Struk Indomaret lengkap terurai akurat dengan kandidat logis:', res.candidates);
+}
+
+// 1.8 OCR Typo Auto-Fix & Candidate Ranking
+{
+  const typoReceipt = `
+    ALFAMART
+    TOTAL BELANJA 47.5OO
+    TUNAI 50.OOO
+  `;
+  const fixed = fixOcrNumberTypos(typoReceipt);
+  assert.ok(fixed.includes('47.500'), 'Typo "47.5OO" harus diperbaiki menjadi "47.500"');
+  const candidates = extractNominalCandidates(typoReceipt);
+  assert.equal(candidates[0], 47500, 'Kandidat teratas harus 47500');
+  console.log('✓ Heuristik typo OCR dot-matrix (O->0, l->1) terverifikasi');
+}
+
 // ==========================================
-// 1.7 OCR MODULE EXTRACTION TESTS
+// 1.9 OCR MODULE EXTRACTION TESTS
 // ==========================================
 {
   assert.equal(typeof extractTextFromImage, 'function', 'extractTextFromImage harus berupa fungsi');
+  assert.equal(typeof preprocessReceiptImage, 'function', 'preprocessReceiptImage harus berupa fungsi');
   assert.equal(isValidImageInput(null), false, 'null bukan input valid');
   assert.equal(isValidImageInput(''), false, 'string kosong bukan input valid');
   assert.equal(isValidImageInput('some text'), true, 'string non-kosong adalah input valid');
@@ -146,7 +197,7 @@ const categories = [
   const testReceipt = 'INDOMARET TOTAL 20.000';
   const extracted = await extractTextFromImage(testReceipt);
   assert.equal(extracted, testReceipt, 'OCR harus mengembalikan teks di environment test');
-  console.log('✓ Modul OCR extractTextFromImage terverifikasi');
+  console.log('✓ Modul OCR extractTextFromImage dan preprocessReceiptImage terverifikasi');
 }
 
 // ==========================================
@@ -319,8 +370,10 @@ import { readFileSync } from 'node:fs';
   assert.ok(txSheetSrc.includes('isOcrLoading'), 'TransactionSheet harus memiliki state isOcrLoading');
   assert.ok(txSheetSrc.includes('scan-receipt-toggle-btn') || txSheetSrc.includes('scan-receipt-btn'), 'TransactionSheet harus memiliki tombol trigger Scan Struk');
   assert.ok(txSheetSrc.includes('scan-receipt-input') || txSheetSrc.includes('scan-receipt-textarea'), 'TransactionSheet harus memiliki textarea struk');
+  assert.ok(txSheetSrc.includes('scanCandidates'), 'TransactionSheet harus memiliki state scanCandidates');
+  assert.ok(txSheetSrc.includes('candidate-chips-wrap'), 'TransactionSheet harus memiliki candidate-chips-wrap');
   assert.ok(txSheetSrc.includes('<Icon name={cat.ikon}'), 'TransactionSheet harus menggunakan Icon untuk cat.ikon');
-  console.log('✓ TransactionSheet integrasi AI Scan, kamera, galeri, OCR, dan Icon SVG terverifikasi');
+  console.log('✓ TransactionSheet integrasi AI Scan, kamera, galeri, OCR, candidate chips, dan Icon SVG terverifikasi');
 
   // 4.4 Statistik Page checks
   const statsSrc = readFileSync('src/routes/statistik/+page.svelte', 'utf8');

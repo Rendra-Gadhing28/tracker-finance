@@ -67,6 +67,27 @@ function parseIndonesianAmount(str) {
   return parseInt(s, 10) || 0;
 }
 
+/**
+ * Fix common OCR typos in numeric parts:
+ * 'O'/'o' -> '0', 'l'/'I'/'|' -> '1'
+ *
+ * @param {string} str
+ * @returns {string}
+ */
+export function fixOcrNumberTypos(str) {
+  if (!str) return '';
+  return str
+    .replace(/\b([0-9lIOo|]+(?:[.,][0-9lIOo|]+)+)\b/g, (match) => {
+      if (/[0-9]/.test(match)) {
+        return match.replace(/[Oo]/g, '0').replace(/[lI|]/g, '1');
+      }
+      return match;
+    })
+    .replace(/\b([0-9][0-9lIOo|]{3,7})\b/g, (match) => {
+      return match.replace(/[Oo]/g, '0').replace(/[lI|]/g, '1');
+    });
+}
+
 function parseNumberFromLine(line) {
   const kMatch = line.match(/\b(\d+(?:[.,]\d+)?)\s*(?:k|rb)\b/i);
   if (kMatch) {
@@ -76,72 +97,162 @@ function parseNumberFromLine(line) {
   const rpMatch = line.match(/(?:rp\.?|idr)\s*([0-9.,]+)/i);
   if (rpMatch) {
     const parsed = parseIndonesianAmount(rpMatch[1]);
-    if (parsed > 0) return parsed;
+    if (parsed > 0 && parsed < 1000000000) return parsed;
   }
 
   const formattedMatch = line.match(/\b(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?)\b/);
   if (formattedMatch) {
     const parsed = parseIndonesianAmount(formattedMatch[1]);
-    if (parsed > 0) return parsed;
+    if (parsed > 0 && parsed < 1000000000) return parsed;
   }
 
-  const rawMatches = [...line.matchAll(/\b(\d{3,9})\b/g)];
+  const rawMatches = [...line.matchAll(/\b(\d{3,8})\b/g)];
   if (rawMatches.length > 0) {
-    return parseInt(rawMatches[rawMatches.length - 1][1], 10);
+    const lastNum = parseInt(rawMatches[rawMatches.length - 1][1], 10);
+    if (lastNum > 0 && lastNum < 1000000000) return lastNum;
   }
 
   return 0;
 }
 
-function extractNominal(text) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+const MINIMARKET_TOTAL_REGEX = /(?:total\s+belanja|total\s+akhir|total\s+harga|harga\s+jual)/i;
+const STANDARD_TOTAL_REGEX = /(?:grand\s+total|total\s+bayar|total\s*:|total\b|tagihan|subtotal|jumlah\s+bayar)/i;
+const TRANSFER_AMOUNT_REGEX = /(?:sebesar|nominal|amount|debit|\bdb\b|kredit|\bcr\b)/i;
 
-  const totalLineRegex = /(?:grand\s+total|total\s+bayar|total\s+belanja|total|tagihan|debit|\bdb\b|kredit|\bcr\b|jumlah\s+bayar|nominal|sebesar|amount)/i;
-  const cashChangeRegex = /^(?:tunai|cash|kembalian|kembali|change)\b/i;
+function isBlacklistedLine(line) {
+  // Priority total lines are never blacklisted
+  if (MINIMARKET_TOTAL_REGEX.test(line) || /(?:grand\s+total|total\s+bayar|total\s*:|subtotal|tagihan|jumlah\s+bayar)/i.test(line)) {
+    return false;
+  }
 
-  // 1. Search lines with explicit total keywords
-  for (const line of lines) {
-    if (totalLineRegex.test(line) && !cashChangeRegex.test(line)) {
-      // Remove any date or account number before extracting amount
-      const sanitized = line.replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '')
-                            .replace(/\b\d{10,20}\b/g, '');
+  // Barcode / EAN lines
+  if (/barcode/i.test(line) || /\b899\d{7,11}\b/.test(line)) return true;
+
+  // Tax lines: PPN, DPP, PAJAK, PB1
+  if (/\b(?:ppn|dpp|pajak|pb1)\b/i.test(line)) return true;
+
+  // Change lines: KEMBALI, KEMBALIAN, CHANGE
+  if (/\b(?:kembali|kembalian|change)\b/i.test(line)) return true;
+
+  // Cash tender lines: TUNAI, CASH, DIBAYAR, BAYAR TUNAI, KARTU, FLAZZ
+  if (/^(?:tunai|cash|bayar|dibayar|kartu|flazz)\b/i.test(line)) return true;
+  if (/\b(?:tunai|kembalian|change)\b/i.test(line)) return true;
+  if (/\b(?:bayar\s+tunai|dibayar)\b/i.test(line)) return true;
+
+  // Cashier / POS metadata: KASIR, POS, TRX, NO.
+  if (/\b(?:kasir|pos|trx|no\.)\s*[:#0-9]/i.test(line)) return true;
+
+  return false;
+}
+
+function cleanLineForAmount(line) {
+  return fixOcrNumberTypos(line)
+    .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '')
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, '')
+    .replace(/\b899\d{7,11}\b/g, '')
+    .replace(/\b\d{10,20}\b/g, '');
+}
+
+/**
+ * Extracts 1-4 unique logical nominal candidates from receipt text,
+ * ordered by priority (total belanja minimarket highest, ignores cash/change/tax).
+ *
+ * @param {string} text
+ * @returns {Array<number>}
+ */
+export function extractNominalCandidates(text) {
+  if (!text || typeof text !== 'string') return [];
+
+  const rawLines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const candidates = [];
+  const seen = new Set();
+  const blacklistedNumbers = new Set();
+
+  // 1. Identify numbers on blacklisted lines (TUNAI, KEMBALI, PPN, etc.)
+  for (const line of rawLines) {
+    if (isBlacklistedLine(line)) {
+      const sanitized = cleanLineForAmount(line);
       const num = parseNumberFromLine(sanitized);
-      if (num > 0) return num;
+      if (num > 0) {
+        blacklistedNumbers.add(num);
+      }
     }
   }
 
-  // 2. Search lines with Rp or IDR prefix (bottom-up)
-  const rpLines = lines.filter((l) => /(?:rp\.?|idr)/i.test(l) && !cashChangeRegex.test(l));
-  if (rpLines.length > 0) {
-    for (let i = rpLines.length - 1; i >= 0; i--) {
-      const sanitized = rpLines[i].replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '')
-                                 .replace(/\b\d{10,20}\b/g, '');
-      const num = parseNumberFromLine(sanitized);
-      if (num > 0) return num;
+  function addPriorityCandidate(val) {
+    if (val && val >= 100 && val <= 1000000000 && !seen.has(val)) {
+      seen.add(val);
+      candidates.push(val);
     }
   }
 
-  // 3. Search for 'k' or 'rb' amounts
-  const kMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:k|rb)\b/i);
+  function addCandidate(val) {
+    if (val && val >= 100 && val <= 1000000000 && !seen.has(val) && !blacklistedNumbers.has(val)) {
+      seen.add(val);
+      candidates.push(val);
+    }
+  }
+
+  // Priority 1: Minimarket target totals (TOTAL BELANJA, TOTAL AKHIR, TOTAL HARGA, HARGA JUAL)
+  for (const line of rawLines) {
+    if (MINIMARKET_TOTAL_REGEX.test(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addPriorityCandidate(num);
+    }
+  }
+
+  // Priority 2: General / Standard Totals (GRAND TOTAL, TOTAL BAYAR, TOTAL :, TAGIHAN, SUBTOTAL)
+  for (const line of rawLines) {
+    if (STANDARD_TOTAL_REGEX.test(line) && !MINIMARKET_TOTAL_REGEX.test(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addPriorityCandidate(num);
+    }
+  }
+
+  // Priority 3: Transfer / Banking keywords (sebesar, nominal, amount, debit, credit)
+  for (const line of rawLines) {
+    if (TRANSFER_AMOUNT_REGEX.test(line) && !isBlacklistedLine(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addCandidate(num);
+    }
+  }
+
+  // Priority 4: Lines with explicit Rp or IDR prefix
+  for (let i = rawLines.length - 1; i >= 0; i--) {
+    const line = rawLines[i];
+    if (/(?:rp\.?|idr)/i.test(line) && !isBlacklistedLine(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addCandidate(num);
+    }
+  }
+
+  // Priority 5: Shorthand 'k' or 'rb' amounts
+  const kMatch = fixOcrNumberTypos(text).match(/\b(\d+(?:[.,]\d+)?)\s*(?:k|rb)\b/i);
   if (kMatch) {
-    return Math.round(parseFloat(kMatch[1].replace(',', '.')) * 1000);
+    const val = Math.round(parseFloat(kMatch[1].replace(',', '.')) * 1000);
+    if (val > 0) addCandidate(val);
   }
 
-  // 4. Candidate numbers from non-cash lines
-  const validLines = lines.filter((l) => !cashChangeRegex.test(l));
-  const candidateNumbers = [];
-  for (const line of validLines) {
-    const sanitized = line.replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, '')
-                          .replace(/\b\d{10,20}\b/g, '');
-    const num = parseNumberFromLine(sanitized);
-    if (num > 0) candidateNumbers.push(num);
+  // Priority 6: Items or numbers on other non-blacklisted lines
+  for (let i = rawLines.length - 1; i >= 0; i--) {
+    const line = rawLines[i];
+    if (!isBlacklistedLine(line)) {
+      const sanitized = cleanLineForAmount(line);
+      const num = parseNumberFromLine(sanitized);
+      if (num > 0) addCandidate(num);
+    }
   }
 
-  if (candidateNumbers.length > 0) {
-    return candidateNumbers[candidateNumbers.length - 1];
-  }
+  return candidates.slice(0, 4);
+}
 
-  return 0;
+function extractNominal(text) {
+  const candidates = extractNominalCandidates(text);
+  return candidates[0] || 0;
 }
 
 function extractTanggal(text) {
@@ -295,6 +406,7 @@ export function parseReceiptText(text, categories = []) {
     return {
       success: false,
       nominal: 0,
+      candidates: [],
       tanggal: todayStr,
       tipe: 'keluar',
       kategori_id: 'jajan',
@@ -316,8 +428,9 @@ export function parseReceiptText(text, categories = []) {
     tipe = 'masuk';
   }
 
-  // 2. Detect Nominal
-  const nominal = extractNominal(text);
+  // 2. Detect Nominal & Candidates
+  const candidates = extractNominalCandidates(text);
+  const nominal = candidates[0] || 0;
 
   // 3. Detect Tanggal
   const tanggal = extractTanggal(text);
@@ -383,6 +496,7 @@ export function parseReceiptText(text, categories = []) {
   return {
     success: nominal > 0,
     nominal,
+    candidates,
     tanggal,
     tipe,
     kategori_id: finalCatId,
