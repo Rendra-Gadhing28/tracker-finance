@@ -1,6 +1,7 @@
 <script>
   import BottomSheet from './BottomSheet.svelte';
   import Button from './Button.svelte';
+  import Icon from './Icon.svelte';
   import { getWIBParts } from '../week.js';
 
   /**
@@ -60,7 +61,7 @@
     <!-- Streak Summary Banner -->
     <div class="streak-summary-card">
       <div class="streak-paw-circle">
-        <span class="streak-paw-icon">🔥</span>
+        <span class="streak-paw-icon"><Icon name="fire" size={20} /></span>
       </div>
       <div class="streak-summary-info">
         <h3 class="streak-main-title font-num tabular-nums">
@@ -92,9 +93,9 @@
           aria-label="{badge.name}: {badge.unlocked ? 'Diraih' : 'Terkunci'}"
         >
           <div class="badge-icon-wrap">
-            <span class="badge-icon">{badge.icon}</span>
+            <span class="badge-icon"><Icon name={badge.icon} size={22} /></span>
             {#if !badge.unlocked}
-              <span class="lock-mini-icon">🔒</span>
+              <span class="lock-mini-icon"><Icon name="lock" size={11} /></span>
             {:else if badge.isNew}
               <span class="new-mini-dot" title="Baru"></span>
             {/if}
@@ -112,7 +113,7 @@
       <div class="badge-detail-card" role="region" aria-label="Detail lencana">
         <div class="detail-top-row">
           <div class="detail-badge-icon-box {selectedBadge.unlocked ? 'unlocked' : 'locked'}">
-            <span class="detail-icon">{selectedBadge.icon}</span>
+            <span class="detail-icon"><Icon name={selectedBadge.icon} size={26} /></span>
           </div>
           <div class="detail-badge-headings">
             <h5 class="detail-name">{selectedBadge.name}</h5>

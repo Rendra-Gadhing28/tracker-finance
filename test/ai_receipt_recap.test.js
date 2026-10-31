@@ -1,0 +1,307 @@
+import assert from 'node:assert/strict';
+import { parseReceiptText } from '../src/lib/ai/receipt.js';
+import {
+  generateMonthlyRecap,
+  getMonthlyRecapKey,
+  shouldTriggerMonthlyRecap
+} from '../src/lib/recap.js';
+
+console.log('--- RUNNING AI RECEIPT & MONTHLY RECAP TESTS ---');
+
+const categories = [
+  { id: 'jajan', nama: 'Jajan & makan', ikon: '🍙', warna: 'jajan', limit_mingguan: 72500, tipe: 'keluar', urut: 1 },
+  { id: 'pulsa', nama: 'Pulsa & Data', ikon: '📱', warna: 'pulsa', limit_mingguan: 4000, tipe: 'keluar', urut: 2 },
+  { id: 'bensin', nama: 'Bensin & Transport', ikon: '⛽', warna: 'bensin', limit_mingguan: 25000, tipe: 'keluar', urut: 3 },
+  { id: 'jajanin', nama: 'Jajanin / Donasi', ikon: '🎁', warna: 'jajanin', limit_mingguan: 14500, tipe: 'keluar', urut: 4 },
+  { id: 'nabung', nama: 'Tabungan', ikon: '🐷', warna: 'nabung', limit_mingguan: 29000, tipe: 'tabung', urut: 5 },
+  { id: 'masuk', nama: 'Pemasukan', ikon: '💰', warna: 'masuk', limit_mingguan: 145000, tipe: 'masuk', urut: 6 }
+];
+
+// ==========================================
+// 1. PARSE RECEIPT TEXT TESTS
+// ==========================================
+
+// 1.1 Format Struk Indomaret
+{
+  const text = `
+    INDOMARET POINT
+    JL. SUDIRMAN NO. 10
+    01/10/2026 14:30
+    ROTI TAWAR 15.000
+    TEH BOTOL 5.000
+    TOTAL BELANJA: 20.000
+    TUNAI: 50.000
+    KEMBALIAN: 30.000
+  `;
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'Indomaret receipt harus berhasil diparse');
+  assert.equal(res.nominal, 20000, 'Nominal harus 20000 (bukan tunai 50000 atau kembali 30000)');
+  assert.equal(res.tanggal, '2026-10-01', 'Tanggal harus 2026-10-01');
+  assert.equal(res.tipe, 'keluar', 'Tipe harus keluar');
+  assert.equal(res.kategori_id, 'jajan', 'Kategori harus jajan');
+  assert.ok(res.catatan.includes('INDOMARET'), `Catatan harus berisi merchant INDOMARET, dapat: "${res.catatan}"`);
+  assert.ok(res.confidence >= 0.8, 'Confidence harus tinggi (>= 0.8)');
+  console.log('✓ Struk Indomaret berhasil diparse dengan akurat');
+}
+
+// 1.2 Format SMS BCA
+{
+  const text = '01/10 14:20 BCA m-Transfer: m-Transfer Berhasil. Ke 1234567890 AN INDOMARET Rp. 54.000,00';
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'SMS BCA harus berhasil diparse');
+  assert.equal(res.nominal, 54000, 'Nominal SMS BCA harus 54000');
+  assert.ok(res.tanggal.endsWith('-10-01'), `Tanggal harus 01 Oktober, dapat: ${res.tanggal}`);
+  assert.equal(res.tipe, 'keluar', 'Tipe transaksi harus keluar');
+  assert.equal(res.kategori_id, 'jajan', 'Kategori harus jajan');
+  assert.ok(res.catatan.includes('INDOMARET'), `Catatan harus berisi merchant INDOMARET, dapat: "${res.catatan}"`);
+  console.log('✓ SMS m-Transfer BCA berhasil diparse');
+}
+
+// 1.3 Format SMS Mandiri
+{
+  const text = 'TRSF E-BANKING DB 15/10/2026 50.000,00 KE 1234567890 SPBU PERTAMINA';
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'SMS Mandiri harus berhasil diparse');
+  assert.equal(res.nominal, 50000, 'Nominal SMS Mandiri harus 50000');
+  assert.equal(res.tanggal, '2026-10-15', 'Tanggal harus 2026-10-15');
+  assert.equal(res.tipe, 'keluar', 'Tipe harus keluar (DB)');
+  assert.equal(res.kategori_id, 'bensin', 'Kategori SPBU harus bensin');
+  assert.ok(res.catatan.includes('PERTAMINA') || res.catatan.includes('SPBU'), `Catatan harus merchant SPBU PERTAMINA, dapat: "${res.catatan}"`);
+  console.log('✓ SMS Mandiri DB berhasil diparse');
+}
+
+// 1.4 Format QRIS
+{
+  const text = `
+    Pembayaran QRIS Berhasil!
+    Merchant: Kopi Kenangan
+    Total Bayar: Rp 28.000
+    Tanggal: 28/10/2026 10:15
+  `;
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'QRIS receipt harus berhasil');
+  assert.equal(res.nominal, 28000, 'Nominal QRIS harus 28000');
+  assert.equal(res.tanggal, '2026-10-28', 'Tanggal harus 2026-10-28');
+  assert.equal(res.tipe, 'keluar', 'Tipe harus keluar');
+  assert.equal(res.kategori_id, 'jajan', 'Kopi Kenangan masuk kategori jajan');
+  assert.ok(res.catatan.includes('Kopi Kenangan'), `Catatan harus Kopi Kenangan, dapat: "${res.catatan}"`);
+  console.log('✓ Notifikasi QRIS berhasil diparse');
+}
+
+// 1.5 Format GoPay
+{
+  const text = 'Kamu berhasil bayar Rp 35.000 ke Bakso Pak Kumis menggunakan GoPay.';
+  const res = parseReceiptText(text, categories);
+
+  assert.equal(res.success, true, 'GoPay receipt harus berhasil');
+  assert.equal(res.nominal, 35000, 'Nominal GoPay harus 35000');
+  assert.equal(res.tipe, 'keluar', 'Tipe harus keluar');
+  assert.equal(res.kategori_id, 'jajan', 'Bakso masuk kategori jajan');
+  assert.ok(res.catatan.includes('Bakso Pak Kumis'), `Catatan harus Bakso Pak Kumis, dapat: "${res.catatan}"`);
+  console.log('✓ Notifikasi GoPay berhasil diparse');
+}
+
+// 1.6 Format Masuk & Tabung & Casual
+{
+  const txMasuk = parseReceiptText('Transfer Masuk Rp 1.500.000 dari PT MAJU JAYA Berhasil pada 25/10/2026', categories);
+  assert.equal(txMasuk.success, true);
+  assert.equal(txMasuk.tipe, 'masuk');
+  assert.equal(txMasuk.nominal, 1500000);
+  assert.equal(txMasuk.kategori_id, 'masuk');
+
+  const txTabung = parseReceiptText('Setor tabungan celengan impian sebesar 100.000', categories);
+  assert.equal(txTabung.success, true);
+  assert.equal(txTabung.tipe, 'tabung');
+  assert.equal(txTabung.nominal, 100000);
+  assert.equal(txTabung.kategori_id, 'nabung');
+
+  const txCasual = parseReceiptText('makan siang 45k', categories);
+  assert.equal(txCasual.nominal, 45000);
+  assert.equal(txCasual.kategori_id, 'jajan');
+  console.log('✓ Tipe masuk, tabung, dan shorthand nominal (45k) berhasil diparse');
+}
+
+// ==========================================
+// 2. MONTHLY RECAP TESTS
+// ==========================================
+
+{
+  const sampleTransactions = [
+    // Bulan sebelumnya (September 2026)
+    { id: 'prev-1', nominal: 100000, tipe: 'keluar', kategori_id: 'jajan', tanggal: '2026-09-15T12:00:00+07:00' },
+
+    // Bulan target (Oktober 2026)
+    { id: 'tx-1', nominal: 1000000, tipe: 'masuk', kategori_id: 'masuk', tanggal: '2026-10-01T09:00:00+07:00' },
+    { id: 'tx-2', nominal: 60000, tipe: 'keluar', kategori_id: 'jajan', tanggal: '2026-10-05T12:30:00+07:00' },
+    { id: 'tx-3', nominal: 40000, tipe: 'keluar', kategori_id: 'bensin', tanggal: '2026-10-10T15:00:00+07:00' },
+    { id: 'tx-4', nominal: 200000, tipe: 'tabung', kategori_id: 'nabung', tanggal: '2026-10-15T18:00:00+07:00' }
+  ];
+
+  const recap = generateMonthlyRecap(sampleTransactions, categories, new Date('2026-10-20T00:00:00+07:00'));
+
+  assert.equal(recap.periodName, 'Oktober 2026', 'Period name harus "Oktober 2026"');
+  assert.equal(recap.totalKeluar, 100000, 'Total keluar harus 100000 (60k + 40k)');
+  assert.equal(recap.totalMasuk, 1000000, 'Total masuk harus 1000000');
+  assert.equal(recap.totalTabung, 200000, 'Total tabung harus 200000');
+  assert.equal(recap.netSavings, 900000, 'Net savings harus 900000 (1jt - 100k)');
+  assert.equal(recap.savingsRate, 90, 'Savings rate harus 90%');
+  assert.equal(recap.dailyAverage, Math.round(100000 / 31), 'Rata-rata harian keluar di bulan Oktober (31 hari)');
+  assert.equal(recap.prevMonthDiff, 0, 'Pengeluaran sama dengan bulan September (100k vs 100k) -> 0%');
+
+  // Top categories
+  assert.equal(recap.topCategories.length, 2, 'Top categories harus ada 2 kategori pengeluaran');
+  assert.equal(recap.topCategories[0].id, 'jajan');
+  assert.equal(recap.topCategories[0].total, 60000);
+  assert.equal(recap.topCategories[0].persentase, 60);
+
+  assert.equal(recap.topCategories[1].id, 'bensin');
+  assert.equal(recap.topCategories[1].total, 40000);
+  assert.equal(recap.topCategories[1].persentase, 40);
+
+  // Cat advice
+  assert.ok(typeof recap.catAdvice === 'string' && recap.catAdvice.length > 10, 'Neko advice harus string yang bermakna');
+  assert.ok(recap.catAdvice.includes('Nya') || recap.catAdvice.includes('🐾'), 'Advice harus memiliki kepribadian maskot Neko');
+  console.log('✓ Kalkulasi statistik bulanan akurat:', recap.periodName);
+  console.log('  Advice Neko:', recap.catAdvice);
+}
+
+// 2.2 Recap Overspending Scenario
+{
+  const overspendTxs = [
+    { id: 'o-1', nominal: 50000, tipe: 'masuk', kategori_id: 'masuk', tanggal: '2026-10-01' },
+    { id: 'o-2', nominal: 150000, tipe: 'keluar', kategori_id: 'jajan', tanggal: '2026-10-02' }
+  ];
+
+  const recap = generateMonthlyRecap(overspendTxs, categories, new Date('2026-10-15'));
+  assert.equal(recap.netSavings, -100000);
+  assert.ok(recap.catAdvice.includes('melebihi pemasukan'), 'Advice harus memperingatkan pengeluaran berlebih');
+  console.log('✓ Neko advice memberi peringatan saat pengeluaran melebihi pemasukan');
+}
+
+// 2.3 Trigger Recap Helpers
+{
+  assert.equal(getMonthlyRecapKey(new Date('2026-10-15T12:00:00+07:00')), '2026-10');
+  assert.equal(shouldTriggerMonthlyRecap('2026-09', new Date('2026-10-01T00:00:00+07:00')), true);
+  assert.equal(shouldTriggerMonthlyRecap('2026-10', new Date('2026-10-15T00:00:00+07:00')), false);
+  assert.equal(shouldTriggerMonthlyRecap(null), true);
+  assert.equal(shouldTriggerMonthlyRecap(''), true);
+  console.log('✓ Helper getMonthlyRecapKey dan shouldTriggerMonthlyRecap berfungsi benar');
+}
+
+// ==========================================
+// 3. ICON.SVELTE VERIFICATION
+// ==========================================
+import { readFileSync } from 'node:fs';
+
+{
+  const iconSrc = readFileSync('src/lib/components/Icon.svelte', 'utf8');
+
+  // SVG attributes
+  assert.ok(iconSrc.includes('viewBox="0 0 24 24"'), 'viewBox="0 0 24 24"');
+  assert.ok(iconSrc.includes('fill="none"'), 'fill="none"');
+  assert.ok(iconSrc.includes('stroke="currentColor"'), 'stroke="currentColor"');
+  assert.ok(iconSrc.includes('stroke-width="2"'), 'stroke-width="2"');
+  assert.ok(iconSrc.includes('stroke-linecap="round"'), 'stroke-linecap="round"');
+  assert.ok(iconSrc.includes('stroke-linejoin="round"'), 'stroke-linejoin="round"');
+  assert.ok(iconSrc.includes('width={size}') || iconSrc.includes('width="{size}"'), 'width dynamic size');
+  assert.ok(iconSrc.includes('height={size}') || iconSrc.includes('height="{size}"'), 'height dynamic size');
+
+  // Default props
+  assert.ok(iconSrc.includes('size = 18'), 'default size = 18');
+
+  // Check required alias mappings
+  const requiredAliases = [
+    '🍙', 'jajan', 'food',
+    '📱', 'pulsa', 'phone',
+    '⛽', 'bensin', 'fuel',
+    '🎁', 'jajanin', 'gift',
+    '🐷', 'nabung', 'piggy',
+    '💰', 'masuk', 'wallet', 'money',
+    '🏷️', 'lainnya', 'tag',
+    '🔥', 'fire', 'streak',
+    '🔒', 'lock',
+    '⚠️', 'warning', 'alert',
+    '📝', 'note', 'first_tx',
+    '🗓️', 'calendar', 'week_active',
+    '🌟', 'star', 'streak_7',
+    '🏔️', 'mountain', 'streak_30',
+    '🍃', 'leaf', 'perfect_week',
+    '🏁', 'flag', 'goal_reached',
+    '🏆', 'trophy', 'award',
+    '🐾', 'paw',
+    '🎯', 'target', 'goal',
+    '💸', 'flying_money',
+    'sparkles', 'ai',
+    'receipt', 'scan',
+    'check',
+    'chevron-right', 'arrow-right',
+    'chevron-down', 'arrow-down',
+    'close', 'x'
+  ];
+
+  for (const alias of requiredAliases) {
+    assert.ok(iconSrc.includes(alias), `Icon component harus memetakan "${alias}"`);
+  }
+
+  // Fallback rendering
+  assert.ok(iconSrc.includes('{name}</span>'), 'Fallback harus merender <span>{name}</span>');
+
+  console.log('✓ Icon.svelte memenuhi semua spesifikasi SVG, alias mappings, dan fallback emoji');
+}
+
+// ==========================================
+// 4. COMPONENT INTEGRATION TESTS
+// ==========================================
+{
+  // 4.1 DonutChart checks
+  const donutSrc = readFileSync('src/lib/components/DonutChart.svelte', 'utf8');
+  const earTwitchCount = (donutSrc.match(/@keyframes earTwitchLeft/g) || []).length;
+  assert.equal(earTwitchCount, 1, 'DonutChart tidak boleh memiliki duplikasi CSS rules @keyframes earTwitchLeft');
+  assert.ok(donutSrc.includes('foreignObject'), 'DonutChart harus menggunakan foreignObject di tengah');
+  assert.ok(donutSrc.includes('0.75s cubic-bezier(0.16, 1, 0.3, 1)'), 'DonutChart animasi sweep dan entrance harus 0.75s');
+  console.log('✓ DonutChart CSS bersih, durasi 0.75s, dan foreignObject icon terverifikasi');
+
+  // 4.2 MonthlyRecapSheet checks
+  const recapSheetSrc = readFileSync('src/lib/components/MonthlyRecapSheet.svelte', 'utf8');
+  assert.ok(recapSheetSrc.includes('BottomSheet'), 'MonthlyRecapSheet harus menggunakan BottomSheet');
+  assert.ok(recapSheetSrc.includes('generateMonthlyRecap'), 'MonthlyRecapSheet harus menggunakan generateMonthlyRecap');
+  assert.ok(recapSheetSrc.includes('Icon'), 'MonthlyRecapSheet harus menggunakan Icon');
+  assert.ok(recapSheetSrc.includes('recap-month-badge'), 'MonthlyRecapSheet harus memiliki badge bulan');
+  assert.ok(recapSheetSrc.includes('neko-advice-box'), 'MonthlyRecapSheet harus memiliki neko advice box');
+  assert.ok(recapSheetSrc.includes('stats-grid'), 'MonthlyRecapSheet harus memiliki stats grid');
+  assert.ok(recapSheetSrc.includes('prev-month-indicator'), 'MonthlyRecapSheet harus memiliki indikator bulan lalu');
+  assert.ok(recapSheetSrc.includes('top-categories-section'), 'MonthlyRecapSheet harus memiliki top categories section');
+  console.log('✓ MonthlyRecapSheet komponen dan struktur UI terverifikasi');
+
+  // 4.3 TransactionSheet AI Scan & Icon checks
+  const txSheetSrc = readFileSync('src/lib/components/TransactionSheet.svelte', 'utf8');
+  assert.ok(txSheetSrc.includes('parseReceiptText'), 'TransactionSheet harus mengimpor parseReceiptText');
+  assert.ok(txSheetSrc.includes('scan-receipt-toggle-btn') || txSheetSrc.includes('scan-receipt-btn'), 'TransactionSheet harus memiliki tombol trigger Scan Struk');
+  assert.ok(txSheetSrc.includes('scan-receipt-input') || txSheetSrc.includes('scan-receipt-textarea'), 'TransactionSheet harus memiliki textarea struk');
+  assert.ok(txSheetSrc.includes('<Icon name={cat.ikon}'), 'TransactionSheet harus menggunakan Icon untuk cat.ikon');
+  console.log('✓ TransactionSheet integrasi AI Scan dan Icon SVG terverifikasi');
+
+  // 4.4 Statistik Page checks
+  const statsSrc = readFileSync('src/routes/statistik/+page.svelte', 'utf8');
+  assert.ok(statsSrc.includes('MonthlyRecapSheet'), 'Statistik harus mengintegrasikan MonthlyRecapSheet');
+  assert.ok(statsSrc.includes('shouldTriggerMonthlyRecap'), 'Statistik harus menggunakan shouldTriggerMonthlyRecap');
+  assert.ok(statsSrc.includes('getMonthlyRecapKey'), 'Statistik harus menggunakan getMonthlyRecapKey');
+  assert.ok(statsSrc.includes('Rekap Bulanan'), 'Statistik harus memiliki tombol Rekap Bulanan');
+  assert.ok(statsSrc.includes('<Icon name={cat.ikon}'), 'Statistik harus merender Icon SVG untuk kategori');
+  console.log('✓ Statistik auto-trigger rekap bulanan dan tombol pemicu terverifikasi');
+
+  // 4.5 Component emoji replacements
+  const achieveSrc = readFileSync('src/lib/components/AchievementSheet.svelte', 'utf8');
+  assert.ok(achieveSrc.includes('Icon name="fire"'), 'AchievementSheet harus menggunakan Icon fire');
+  assert.ok(achieveSrc.includes('Icon name="lock"'), 'AchievementSheet harus menggunakan Icon lock');
+
+  const goalSrc = readFileSync('src/lib/components/GoalSheet.svelte', 'utf8');
+  assert.ok(goalSrc.includes('Icon name="warning"'), 'GoalSheet harus menggunakan Icon warning');
+  console.log('✓ Emoji replacement di AchievementSheet dan GoalSheet terverifikasi');
+}
+
+console.log('\n--- ALL AI RECEIPT & MONTHLY RECAP TESTS PASSED ---');

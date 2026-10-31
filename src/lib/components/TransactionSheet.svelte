@@ -3,6 +3,8 @@
   import BottomSheet from './BottomSheet.svelte';
   import Button from './Button.svelte';
   import Chip from './Chip.svelte';
+  import Icon from './Icon.svelte';
+  import { parseReceiptText } from '../ai/receipt.js';
   import { formatRp, parseRp } from '../money.js';
   import { toWIBISOString, getWIBParts, createWIBDate } from '../week.js';
 
@@ -48,6 +50,57 @@
   let showCatatan = $state(false);
   let isSubmitting = $state(false);
   let scrollContainerRef = $state(null);
+
+  // AI Scan Receipt state
+  let isScanOpen = $state(false);
+  let scanRawText = $state('');
+  let scanFeedback = $state('');
+
+  function handleExtractReceipt() {
+    if (!scanRawText.trim()) return;
+    const res = parseReceiptText(scanRawText, categories);
+    if (res && res.success) {
+      if (res.nominal) {
+        rawNominal = Number(res.nominal).toLocaleString('id-ID');
+      }
+      if (res.tipe) {
+        tipe = res.tipe;
+      }
+      if (res.kategori_id) {
+        kategoriId = res.kategori_id;
+      }
+      if (res.catatan) {
+        catatan = res.catatan;
+        showCatatan = true;
+      }
+      if (res.tanggal) {
+        if (res.tanggal === todayISO) {
+          dateOption = 'today';
+        } else {
+          dateOption = 'custom';
+          customDateVal = res.tanggal;
+        }
+      }
+      scanFeedback = '✓ Ekstrak struk berhasil!';
+      setTimeout(() => {
+        scanFeedback = '';
+        isScanOpen = false;
+        scanRawText = '';
+        scrollToSelectedChip();
+      }, 500);
+    } else {
+      scanFeedback = 'Format teks struk tidak dikenali';
+      setTimeout(() => {
+        scanFeedback = '';
+      }, 2500);
+    }
+  }
+
+  function handleCloseScan() {
+    isScanOpen = false;
+    scanRawText = '';
+    scanFeedback = '';
+  }
 
   const DEFAULT_MASUK_CAT = {
     id: 'masuk',
@@ -237,6 +290,9 @@
 
     if (isOpening || initialTxChanged) {
       untrack(() => {
+        isScanOpen = false;
+        scanRawText = '';
+        scanFeedback = '';
         if (mode === 'edit' && initialTx) {
           tipe = initialTx.tipe || 'keluar';
           kategoriId = initialTx.kategori_id || '';
@@ -445,39 +501,86 @@
   {onclose}
 >
   <div class="tx-sheet-content">
-    <!-- Type Selector -->
-    <div class="type-segmented-group" role="tablist" aria-label="Tipe Transaksi">
+    <!-- Type Selector & AI Scan Trigger -->
+    <div class="type-selector-header">
+      <div class="type-segmented-group" role="tablist" aria-label="Tipe Transaksi">
+        <button
+          type="button"
+          class="type-tab {tipe === 'keluar' ? 'active-keluar' : ''}"
+          onclick={() => handleTypeChange('keluar')}
+          role="tab"
+          aria-selected={tipe === 'keluar'}
+        >
+          <Icon name="flying_money" size={16} />
+          <span>Keluar</span>
+        </button>
+        <button
+          type="button"
+          class="type-tab {tipe === 'masuk' ? 'active-masuk' : ''}"
+          onclick={() => handleTypeChange('masuk')}
+          role="tab"
+          aria-selected={tipe === 'masuk'}
+        >
+          <Icon name="wallet" size={16} />
+          <span>Masuk</span>
+        </button>
+        <button
+          type="button"
+          class="type-tab {tipe === 'tabung' ? 'active-tabung' : ''}"
+          onclick={() => handleTypeChange('tabung')}
+          role="tab"
+          aria-selected={tipe === 'tabung'}
+        >
+          <Icon name="piggy" size={16} />
+          <span>Tabung</span>
+        </button>
+      </div>
+
       <button
         type="button"
-        class="type-tab {tipe === 'keluar' ? 'active-keluar' : ''}"
-        onclick={() => handleTypeChange('keluar')}
-        role="tab"
-        aria-selected={tipe === 'keluar'}
+        class="scan-receipt-toggle-btn {isScanOpen ? 'active' : ''}"
+        onclick={() => (isScanOpen = !isScanOpen)}
+        aria-label="Scan Struk dengan AI"
       >
-        <span>💸</span>
-        <span>Keluar</span>
-      </button>
-      <button
-        type="button"
-        class="type-tab {tipe === 'masuk' ? 'active-masuk' : ''}"
-        onclick={() => handleTypeChange('masuk')}
-        role="tab"
-        aria-selected={tipe === 'masuk'}
-      >
-        <span>💰</span>
-        <span>Masuk</span>
-      </button>
-      <button
-        type="button"
-        class="type-tab {tipe === 'tabung' ? 'active-tabung' : ''}"
-        onclick={() => handleTypeChange('tabung')}
-        role="tab"
-        aria-selected={tipe === 'tabung'}
-      >
-        <span>🐷</span>
-        <span>Tabung</span>
+        <Icon name="sparkles" size={14} />
+        <span>Scan Struk (AI)</span>
       </button>
     </div>
+
+    <!-- AI Scan Receipt Expandable Box -->
+    {#if isScanOpen}
+      <div class="scan-receipt-box">
+        <textarea
+          class="scan-receipt-input"
+          placeholder="Tempel teks struk belanja, SMS m-banking, invoice, QRIS, dll..."
+          rows="3"
+          bind:value={scanRawText}
+        ></textarea>
+        {#if scanFeedback}
+          <div class="scan-feedback-pill {scanFeedback.startsWith('✓') ? 'success' : 'error'}">
+            {scanFeedback}
+          </div>
+        {/if}
+        <div class="scan-receipt-btn-row">
+          <Button
+            variant="secondary"
+            size="sm"
+            onclick={handleCloseScan}
+          >
+            Batal
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onclick={handleExtractReceipt}
+            disabled={!scanRawText.trim()}
+          >
+            <Icon name="sparkles" size={14} />
+            <span>Ekstrak Otomatis</span>
+          </Button>
+        </div>
+      </div>
+    {/if}
 
     <!-- Category Chips (Horizontally Scrollable) -->
     <div
@@ -502,7 +605,7 @@
             role="radio"
             aria-checked={kategoriId === cat.id}
           >
-            <span class="cat-chip-icon">{cat.ikon}</span>
+            <span class="cat-chip-icon"><Icon name={cat.ikon} size={16} /></span>
             <span class="cat-chip-label">{cat.nama}</span>
             {#if isOverLimit}
               <span class="limit-dot over" title="Melebihi budget"></span>
@@ -594,7 +697,7 @@
               role="radio"
               aria-checked={goalId === g.id}
             >
-              <span>{g.ikon || '🎯'}</span>
+              <Icon name={g.ikon || 'target'} size={15} />
               <span>{g.nama}</span>
             </button>
           {/each}
@@ -605,7 +708,7 @@
             role="radio"
             aria-checked={!goalId}
           >
-            <span>🏷️</span>
+            <Icon name="tag" size={15} />
             <span>Umum</span>
           </button>
         </div>
@@ -681,7 +784,7 @@
     <!-- Budget Warning Pill (Non-blocking) -->
     {#if budgetWarning}
       <div class="warning-pill" role="status">
-        <span class="warning-icon">⚠️</span>
+        <span class="warning-icon"><Icon name="warning" size={14} /></span>
         <span class="warning-text">{budgetWarning}</span>
       </div>
     {/if}
@@ -730,6 +833,101 @@
   }
 
   /* Segmented Type Control */
+  .type-selector-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .scan-receipt-toggle-btn {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--edge-soft);
+    background: var(--glass-1);
+    color: var(--kabut);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 140ms ease;
+  }
+
+  .scan-receipt-toggle-btn:hover,
+  .scan-receipt-toggle-btn.active {
+    background: rgba(31, 92, 70, 0.12);
+    border-color: var(--accent);
+    color: var(--komorebi);
+  }
+
+  /* Scan Receipt Expandable Box */
+  .scan-receipt-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--glass-1);
+    border: 1px solid var(--accent);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    animation: scanSlideDown 180ms ease-out;
+  }
+
+  @keyframes scanSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .scan-receipt-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--edge-soft);
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+    resize: vertical;
+    outline: none;
+  }
+
+  .scan-receipt-input:focus {
+    border-color: var(--accent);
+  }
+
+  .scan-feedback-pill {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .scan-feedback-pill.success {
+    background: rgba(31, 92, 70, 0.15);
+    color: var(--accent);
+  }
+
+  .scan-feedback-pill.error {
+    background: rgba(168, 69, 42, 0.15);
+    color: var(--expense);
+  }
+
+  .scan-receipt-btn-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   .type-segmented-group {
     display: flex;
     background: var(--glass-1);

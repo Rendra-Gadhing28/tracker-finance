@@ -1,11 +1,14 @@
 <script>
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import Card from '$lib/components/Card.svelte';
   import DonutChart from '$lib/components/DonutChart.svelte';
+  import Icon from '$lib/components/Icon.svelte';
+  import MonthlyRecapSheet from '$lib/components/MonthlyRecapSheet.svelte';
   import { formatRp } from '$lib/money.js';
   import { getWIBParts } from '$lib/week.js';
   import { calculateStats, INDO_DAYS, INDO_MONTHS } from '$lib/stats.js';
   import { floatView } from '$lib/actions/floatView.js';
+  import { shouldTriggerMonthlyRecap, getMonthlyRecapKey } from '$lib/recap.js';
   import {
     transactions,
     budgets,
@@ -28,6 +31,19 @@
   let unfoldedCatId = $state(null);
   let showAllTx = $state(false);
   let activeBarTooltip = $state(null);
+  let showMonthlyRecap = $state(false);
+
+  onMount(() => {
+    try {
+      const lastSeen = localStorage.getItem('last_seen_recap');
+      if (shouldTriggerMonthlyRecap(lastSeen)) {
+        showMonthlyRecap = true;
+        localStorage.setItem('last_seen_recap', getMonthlyRecapKey());
+      }
+    } catch (e) {
+      // localStorage may fail in restricted sandboxes
+    }
+  });
 
   const isCurrentPeriod = $derived(
     period === 'minggu' ? weekOffset === 0 : monthOffset === 0
@@ -207,6 +223,18 @@
         </button>
       </div>
     </div>
+
+    <!-- Tombol Rekap Bulanan -->
+    <div class="recap-btn-row">
+      <button
+        type="button"
+        class="recap-trigger-btn interactive-tap"
+        onclick={() => (showMonthlyRecap = true)}
+      >
+        <Icon name="calendar" size={15} />
+        <span>Rekap Bulanan</span>
+      </button>
+    </div>
   </div>
 
   <!-- 2. Donut Chart Section (PRD 19.4) -->
@@ -251,7 +279,7 @@
           >
             <div class="cat-row-top">
               <div class="cat-identity">
-                <span class="cat-icon">{cat.ikon}</span>
+                <span class="cat-icon"><Icon name={cat.ikon} size={18} /></span>
                 <div class="cat-names">
                   <span class="cat-name">{cat.nama}</span>
                   {#if mode === 'terpakai' && !isZero}
@@ -369,6 +397,12 @@
   </section>
 </div>
 
+<MonthlyRecapSheet
+  bind:open={showMonthlyRecap}
+  transactions={$transactions}
+  categories={$budgets}
+/>
+
 <style>
   .stats-page {
     display: flex;
@@ -472,6 +506,36 @@
     color: var(--fg);
   }
 
+  .recap-btn-row {
+    display: flex;
+    justify-content: center;
+    padding-top: 2px;
+  }
+
+  .recap-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 14px;
+    border-radius: var(--r-bar, 4px);
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 140ms ease;
+  }
+
+  .recap-trigger-btn:hover {
+    background: var(--bg-raised);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   /* 2. Donut Card */
   .donut-card {
     display: flex;
@@ -566,7 +630,13 @@
   }
 
   .cat-icon {
-    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 18px;
+    color: var(--fg);
   }
 
   .cat-names {

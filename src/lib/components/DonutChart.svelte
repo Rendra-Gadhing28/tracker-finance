@@ -1,5 +1,6 @@
 <script>
   import { formatRp } from '../money.js';
+  import Icon from './Icon.svelte';
 
   /**
    * @typedef {Object} Slice
@@ -310,13 +311,15 @@
           </text>
         {:else if selectedSlice}
           <!-- Selected Slice View -->
-          <text x={cx} y={cy - 16} text-anchor="middle" class="center-slice-icon">
-            {selectedSlice.ikon}
-          </text>
-          <text x={cx} y={cy + 3} text-anchor="middle" class="center-slice-name">
+          <foreignObject x={cx - 14} y={cy - 28} width="28" height="28">
+            <div class="center-slice-icon-box">
+              <Icon name={selectedSlice.ikon} size={22} />
+            </div>
+          </foreignObject>
+          <text x={cx} y={cy + 10} text-anchor="middle" class="center-slice-name">
             {selectedSlice.nama}
           </text>
-          <text x={cx} y={cy + 20} text-anchor="middle" class="center-slice-nominal tabular-nums">
+          <text x={cx} y={cy + 24} text-anchor="middle" class="center-slice-nominal tabular-nums">
             {formatRp(selectedSlice.nominal)} · {selectedSlice.persen}%
           </text>
         {:else}
@@ -416,58 +419,6 @@
   .center-empty-text-2,
   .center-empty-text-3 {
     font-size: 11px;
-    font-family: inherit;
-    font-weight: 500;
-    fill: var(--mute);
-  }
-
-  .center-total-amount {
-    font-size: 18px;
-    font-family: inherit;
-    font-weight: 700;
-    fill: var(--ink);
-  }
-
-  .center-mode-label {
-    font-size: 13px;
-    font-family: inherit;
-    font-weight: 500;
-    fill: var(--mute);
-  }
-
-  .center-slice-icon {
-    font-size: 18px;
-  }
-
-  .center-slice-name {
-    font-size: 13px;
-    font-family: inherit;
-    font-weight: 700;
-    fill: var(--ink);
-  }
-
-  .center-slice-nominal {
-    font-size: 12px;
-    font-family: inherit;
-    font-weight: 700;
-    fill: var(--mute);
-  }
-
-  @keyframes earTwitchLeft {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-8deg); }
-  }
-
-  @keyframes earTwitchRight {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(8deg); }
-  }
-
-  /* Center Typography */
-  .center-empty-text-1,
-  .center-empty-text-2,
-  .center-empty-text-3 {
-    font-size: 11px;
     font-family: var(--font-ui);
     font-weight: 500;
     fill: var(--kabut);
@@ -487,8 +438,13 @@
     fill: var(--aether);
   }
 
-  .center-slice-icon {
-    font-size: 18px;
+  .center-slice-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--komorebi);
   }
 
   .center-slice-name {
@@ -506,7 +462,7 @@
   }
 
   .sweep-mask-circle {
-    animation: sweepMaskAnim 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: sweepMaskAnim 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   @keyframes sweepMaskAnim {
@@ -520,7 +476,7 @@
 
   .donut-slices-reveal {
     transform-origin: 120px 138px;
-    animation: donutSlicesEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: donutSlicesEntrance 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   @keyframes donutSlicesEntrance {
@@ -536,7 +492,7 @@
 
   .center-text-reveal {
     transform-origin: 120px 138px;
-    animation: centerTextEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: centerTextEntrance 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   @keyframes centerTextEntrance {

@@ -1,6 +1,7 @@
 <script>
   import BottomSheet from './BottomSheet.svelte';
   import Button from './Button.svelte';
+  import Icon from './Icon.svelte';
   import { parseRp } from '../money.js';
 
   /**
@@ -126,7 +127,7 @@
   <div class="goal-sheet-content">
     {#if showDeleteConfirm}
       <div class="delete-confirm-box">
-        <span class="warning-icon" aria-hidden="true">⚠️</span>
+        <span class="warning-icon" aria-hidden="true"><Icon name="warning" size={28} /></span>
         <h3 class="confirm-title">Hapus target "{goal?.nama}"?</h3>
         <p class="confirm-desc">
           {relatedTxCount} setoran akan menjadi tabungan umum.
